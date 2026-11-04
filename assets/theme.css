@@ -44,3 +44,10 @@ h1{font-size:clamp(36px,4.7vw,62px);font-weight:820;letter-spacing:-2.7px;color:
 @media(max-width:850px){.mode-choice{grid-template-columns:1fr}.mode-option{min-height:72px}}
 @media(max-width:640px){.voice-panel{padding:13px}.voice-transcript{font-size:16px}.mode-option{padding:12px 14px}.oral-controls{gap:8px}}
 @media(prefers-reduced-motion:reduce){.voice-dot,.voice-pulse{animation:none}}
+
+/* Response Lab 2.4: visible competence-based lesson and feedback-to-transfer loop. */
+.daily-lesson{margin:20px 0 16px;border:1px solid var(--border,#354256);border-radius:18px;padding:20px;display:flex;justify-content:space-between;align-items:center;gap:18px;background:linear-gradient(115deg,var(--panel,#182436),var(--panel2,#203347));}
+.daily-lesson h2{margin:8px 0;font-size:1.4rem}.daily-lesson p{margin:5px 0;max-width:650px}.lesson-actions{flex:0 0 auto;display:flex;flex-direction:column;gap:12px;align-items:stretch}.lesson-actions .btn{max-width:100%;white-space:normal}.lesson-actions p{max-width:260px}
+.coach-results{padding:16px;margin:18px 0;border:1px solid #388978;border-radius:14px;background:rgba(28,130,114,.10)}.coach-results h3{margin:10px 0 8px}.coach-results p{white-space:pre-wrap;overflow-wrap:anywhere}.coach-results .flex{margin:14px 0 8px}
+.skill-progress .skill-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border,#354256);gap:15px}.skill-row span{display:flex;flex-direction:column;gap:4px}.skill-row small{font-size:.8rem;opacity:.78}.skill-progress .notice{margin-top:15px}
+@media(max-width:760px){.daily-lesson{flex-direction:column;align-items:stretch}.lesson-actions{width:100%}.daily-lesson h2{font-size:1.24rem}}

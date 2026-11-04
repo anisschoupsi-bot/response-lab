@@ -132,6 +132,9 @@ const SIMS={FR:[
 {id:'SE4',title:'Strategic objection',role:'Senior colleague',context:'You present a new strategy in a meeting. A senior colleague strongly objects.',goal:'Defend the idea and preserve collaboration.',turns:['Your approach is too theoretical. We need practical outcomes.','Even with a test, how do we know you are not underestimating costs?','Give me one sentence that would persuade the committee to consider this.']}
 ]};
 
+// Six additional scripted three-turn negotiations in each language.
+for(const language of ['FR','EN'])SIMS[language].push(...TRAINING_CONTENT.negotiations[language]);
+
 const WARMUPS={
  FR:[
   ['W01','Décision rapide','Manager','Nous n’avons pas les chiffres définitifs. Vous tranchez comment ?','Énoncez une décision provisoire et une condition de révision.'],
@@ -169,6 +172,59 @@ const DAILY_FOCUS_EN=[
  'Final unseen simulation','Day 30 review and next focus'
 ];
 function programDay(){return Math.min(30,1+(app.completedSessions||[]).length)}
+
+// Every day has an explicit objective, method cue and one or more associated original oral challenges.
+const ALL_SKILLS=TRAINING_CONTENT.skills.map(x=>x.id);
+function skillMeta(id){return TRAINING_CONTENT.skills.find(x=>x.id===id)||TRAINING_CONTENT.skills[0]}
+function skillTitle(id,lang=app.lang){const v=skillMeta(id);return v[lang]}
+function dailyPlan(day=programDay()){return TRAINING_CONTENT.dailyPlan[Math.max(0,Math.min(29,day-1))]}
+function recentCoachFocus(lang=app.lang){return app.records.slice().reverse().find(r=>r.source==='local'&&r.lang===lang&&r.coachFocusPending===true&&ALL_SKILLS.includes(r.coachPriority))||null}
+function suggestedSkill(){return recentCoachFocus()?.coachPriority||dailyPlan().skill}
+function inferredSkill(record){
+ if(ALL_SKILLS.includes(record?.skill))return record.skill;
+ const hint=[record?.category,record?.objective,record?.objection].join(' ').toLowerCase();
+ if(/prix|réduct|remis|budget|contract|price|cost|concession|négoci|buyer|achat|discount/.test(hint))return 'negotiate';
+ if(/conflit|critique|accus|colère|mécontent|apolog|trust|angry|anger|attack|blame/.test(hint))return 'calm';
+ if(/preuve|évidence|hypoth|donn|résultat|evidence|risk|data|proof/.test(hint))return 'evidence';
+ if(/clarifi|précis|comprend|expliqu|question|vague|specific/.test(hint))return 'clarify';
+ if(/blanc|surpris|interrupt|stress|urgence|hesita|quick/.test(hint))return 'recover';
+ return 'position';
+}
+function upcomingTip(){const plan=dailyPlan();return (plan.cue[app.lang]||plan.cue.FR)}
+function choosePrompt(skill,excludeIds=[]){
+ const lang=app.lang,level=currentLevel(),target=ALL_SKILLS.includes(skill)?skill:dailyPlan().skill;
+ const old=(lang==='FR'?FRENCH:ENGLISH).filter(r=>r[1]===level).map(r=>({id:r[0],level:r[1],category:r[2],role:r[3],objection:r[4],goal:r[5],skill:inferredSkill({category:r[2],objective:r[5],objection:r[4]})}));
+ const fresh=TRAINING_CONTENT.prompts[lang].filter(p=>p.level===level);
+ // New skills-based prompts are preferred; legacy prompts stay usable as a fallback.
+ // Avoid mixing lightly inferred legacy skill labels with explicitly authored exercises.
+ const freshSkill=fresh.filter(p=>p.skill===target);
+ const oldSkill=old.filter(p=>p.skill===target);
+ const pool=freshSkill.length?freshSkill:oldSkill.length?oldSkill:fresh.length?fresh:old;
+ const counts=new Map();for(const r of app.records){if(r.lang===lang&&r.challengeId)counts.set(r.challengeId,(counts.get(r.challengeId)||0)+1)}
+ const avoid=new Set(excludeIds);const without=pool.filter(p=>!avoid.has(p.id));const candidates=without.length?without:pool;
+ // Prefer the original, competency-specific bank for early practice, but use any
+ // unused legacy prompts in this skill before repeating a previously seen item.
+ const allUnused=[...freshSkill,...oldSkill].filter(p=>!avoid.has(p.id)&&!counts.has(p.id));
+ const freshUnused=allUnused.filter(p=>p.id.startsWith('B24-'));
+ const last=new Set(app.records.filter(r=>r.lang===lang).slice(-18).map(r=>r.challengeId));
+ const options=freshUnused.length?freshUnused:allUnused.length?allUnused:candidates.filter(p=>!last.has(p.id)).length?candidates.filter(p=>!last.has(p.id)):candidates;
+ const low=Math.min(...options.map(p=>counts.get(p.id)||0));const least=options.filter(p=>(counts.get(p.id)||0)===low);
+ // Spread the different role contexts rather than repeating a learned phrase.
+ return {...least[Math.floor(Math.random()*least.length)]};
+}
+function prepareTransferFromRecord(id){const origin=app.records.find(x=>x.id===id&&x.source==='local');if(!origin)return toast('Tentative introuvable.');
+ if(origin.lang!==app.lang){app.lang=origin.lang;$('global-lang').value=app.lang}
+ const skill=ALL_SKILLS.includes(origin.coachPriority)?origin.coachPriority:inferredSkill(origin);
+ prepareDrill(false,skill,{parentAttemptId:origin.id,excludeIds:[origin.challengeId],practicePurpose:'transfer'});
+ toast('Nouvelle objection : même compétence, situation différente. Ne récite pas la réponse précédente.');
+}
+function replayRecord(id){const origin=app.records.find(x=>x.id===id&&x.source==='local');if(!origin)return toast('Tentative introuvable.');
+ if(origin.lang!==app.lang){app.lang=origin.lang;$('global-lang').value=app.lang}
+ const level=Math.min(currentLevel(),origin.level||currentLevel()),deadline=Math.max(30,LEVELS[level-1]);
+ ongoing={responseMode:app.practiceMode,captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),mode:'timed_objection',challenge:{id:origin.challengeId,category:origin.category,role:origin.role,objection:origin.objection,goal:origin.objective||'',level,skill:inferredSkill(origin)},lang:app.lang,level,condition:'retry',practicePurpose:'repair',parentAttemptId:origin.id,deadline,stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};
+ save();nav('drill');toast('Réessai de consolidation : plus de temps, même objection.');
+}
+
 const EVAL_DAYS=[1,7,14,21,28,30];
 const EVAL_SETS={
  FR:[
@@ -198,20 +254,21 @@ function startAssessment(leg='baseline'){
  const [category,role,prompt,goal,pressure]=set.details;
  const id=app.lang+'-'+set.id+'-'+leg.toUpperCase();
  if(app.records.some(r=>r.challengeId===id&&r.source==='local')){toast('Cette épreuve est déjà enregistrée : elle n’est plus inédite.');return}
- ongoing={responseMode:app.practiceMode,mode:'timed_objection',challenge:{id,level:currentLevel(),category,role,objection:leg==='baseline'?prompt:pressure,goal,context:'Bilan inédit '+set.id+' · Même thème, deux formulations différentes.'},lang:app.lang,level:currentLevel(),condition:'assessment_'+leg,assessmentPair:app.lang+'-'+set.id,deadline:leg==='baseline'?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill');
+ ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:{id,level:currentLevel(),category,role,objection:leg==='baseline'?prompt:pressure,goal,skill:dailyPlan().skill,context:'Bilan inédit '+set.id+' · Même thème, deux formulations différentes.'},lang:app.lang,level:currentLevel(),condition:'assessment_'+leg,assessmentPair:app.lang+'-'+set.id,deadline:leg==='baseline'?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill');
 }
 function suggestNextPhase(){if(!app.session){toast('Commence ta séance depuis le tableau de bord.');return}const phase=phaseIndex(sessElapsed()/1000);if(phase===1){prepareWarmup();return}if(phase===2){prepareDrill();return}if(phase===3){nav('negotiation');return}if(phase===4){nav('progress');return}nav('home');toast('Calibre ton niveau de stress puis démarre par un micro-exercice.');}
 
-function currentFocus(){
- const rows=app.records.filter(r=>r.lang===app.lang&&r.source==='local'&&r.condition==='timed'&&r.mode==='timed_objection').slice(-5);
- if(rows.length>=2){
-  if(rows.slice(-2).every(r=>r.blocked===true))return app.lang==='EN'?'Recovery: one clear sentence':'Débloquer : une phrase claire, sans perfectionnisme';
-  if(rows.some(r=>Number.isFinite(r.stress)&&r.stress>=8))return app.lang==='EN'?'Reduce pressure and find a starting phrase':'Réduire la pression et trouver une phrase de départ';
-  const scored=rows.filter(coachCompleted);if(scored.length>=2){const avg=k=>scored.reduce((v,r)=>v+r.coachScores[k],0)/scored.length;const k=['relevance','reasoning','strategy'].sort((a,b)=>avg(a)-avg(b))[0];if(avg(k)<3)return ({relevance:'Identifier et traiter la vraie objection',reasoning:'Position → raison → proposition',strategy:'Répondre avec assertivité et compromis'})[k]}
- }
- const i=programDay()-1;return (app.lang==='EN'?DAILY_FOCUS_EN:DAILY_FOCUS_FR)[i]
+function currentFocus(){return dailyPlan().title[app.lang]}
+function pickWarmup(){
+ const skill=dailyPlan().skill;
+ // A 20-second warm-up now practices the exact competence of the day, on an accessible level-one prompt.
+ const candidates=TRAINING_CONTENT.prompts[app.lang].filter(p=>p.skill===skill&&p.level===1);
+ const counts=new Map();for(const record of app.records){if(record.lang===app.lang&&record.challengeId)counts.set(record.challengeId,(counts.get(record.challengeId)||0)+1)}
+ const fewest=Math.min(...candidates.map(p=>counts.get(p.id)||0));
+ const items=candidates.filter(p=>(counts.get(p.id)||0)===fewest);
+ const prompt=items[Math.floor(Math.random()*items.length)];
+ return {...prompt,category:app.lang==='FR'?'Micro-réflexe ciblé':'Targeted micro-drill',level:currentLevel(),goal:(app.lang==='FR'?'En une phrase simple : ':'In one simple sentence: ')+prompt.goal};
 }
-function pickWarmup(){const arr=WARMUPS[app.lang],used=new Set(app.records.filter(r=>r.condition==='warmup'&&r.lang===app.lang).slice(-3).map(r=>r.challengeId));const pool=arr.filter(x=>!used.has(x[0]));const v=(pool.length?pool:arr)[Math.floor(Math.random()*(pool.length||arr.length))];return {id:`${app.lang}-${v[0]}`,level:currentLevel(),category:v[1],role:v[2],objection:v[3],goal:v[4]}}
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -219,10 +276,10 @@ const uid=()=>('R'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)
 const bound=(n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
 const fmtTime=s=>{const n=Math.max(0,Math.ceil(s));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`};
 const dateFmt=d=>{try{return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}catch{return '—'}};
-const defaults=()=>({version:4,lang:'FR',levels:{FR:1,EN:1},records:[],completedSessions:[],coachInbox:[],pending:null,session:null,programStart:null,practiceMode:'oral',oralCapture:'speech'});
+const defaults=()=>({version:5,lang:'FR',levels:{FR:1,EN:1},records:[],completedSessions:[],coachInbox:[],pending:null,session:null,programStart:null,practiceMode:'oral',oralCapture:'speech'});
 let app=defaults(),storageWorking=true,ongoing=null,negotiation=null,currentView='home',customNext=null,toastTimer=null,speechSession=null,draftSaveTimer=null;
 try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&typeof p==='object'){app={...defaults(),...p,levels:{...defaults().levels,...p.levels},records:Array.isArray(p.records)?p.records:[]}}}}catch(e){storageWorking=false}
-app.version=4;if(!Array.isArray(app.completedSessions))app.completedSessions=[];if(!Array.isArray(app.coachInbox))app.coachInbox=[];
+app.version=5;if(!Array.isArray(app.completedSessions))app.completedSessions=[];if(!Array.isArray(app.coachInbox))app.coachInbox=[];
 if(!['FR','EN'].includes(app.lang))app.lang='FR';
 if(!['oral','text'].includes(app.practiceMode))app.practiceMode='oral';if(!['speech','manual'].includes(app.oralCapture))app.oralCapture='speech';
 for(const l of ['FR','EN'])app.levels[l]=bound(app.levels[l]||1,1,5);
@@ -245,20 +302,30 @@ $('stat-total').textContent=String(records.length);$('stat-block').textContent=k
 if($('program-day'))$('program-day').textContent=String(programDay()).padStart(2,'0');if($('program-completed'))$('program-completed').textContent=(app.completedSessions||[]).length+'/30 séance(s) validée(s)'+(app.completedSessions.length>=30?' · parcours terminé':'');
 if($('today-focus'))$('today-focus').textContent=currentFocus();if($('assessment-note'))$('assessment-note').textContent=assessmentSet()?'Bilan inédit recommandé : référence confortable + réponse sous pression, avec deux objections du même thème.':'Entraînement du jour : micro-défi, objection et négociation.';
 if($('today-mode'))$('today-mode').textContent=app.practiceMode==='oral'?(preferredOralCapture()==='speech'?'Oral + transcription':'Oral sans micro'):'Écrit';
+if($('today-skill'))$('today-skill').textContent=skillTitle(dailyPlan().skill);
+if($('today-cue'))$('today-cue').textContent=upcomingTip();
+if($('today-criterion'))$('today-criterion').textContent=dailyPlan().criterion[app.lang];
+const follow=recentCoachFocus();if($('coach-repair')){$('coach-repair').hidden=!follow;}
+if($('coach-repair-label')&&follow)$('coach-repair-label').textContent=skillTitle(follow.coachPriority)+' · '+(follow.coachNextStep||'Nouvelle objection pour vérifier le transfert.');
 const el=sessElapsed()/1000;const finished=!!app.session?.completed;if(el>=1200&&app.session?.runningSince){app.session.elapsedMs=1200000;app.session.runningSince=null;save();toast('20 minutes atteintes : valide la séance après le bilan.');}
 $('session-clock').textContent=fmtTime(1200-el);$('session-progress').style.width=`${Math.min(100,el/1200*100)}%`;
 const active=!!app.session&&!finished&&el<1200;const running=active&&!!app.session.runningSince;$('session-status').textContent=finished?'VALIDÉE':el>=1200?'BILAN À VALIDER':running?'EN COURS':active?'EN PAUSE':'NON DÉMARRÉE';$('session-toggle').textContent=finished||!app.session?'▶ Commencer':el>=1200?'20 min atteintes':running?'Ⅱ Pause':'▶ Reprendre';$('session-phase').textContent=!app.session?'Entraînement guidé en cinq étapes.':finished?'Routine terminée. Pensez à exporter régulièrement vos résultats.':`Phase en cours : ${PHASES[phaseIndex(el)][0]}.`;
 const idx=app.session?phaseIndex(el):0;if($('session-checklist')){const ch=sessionChecklist();$('session-checklist').textContent=`Séance actuelle : échauffement ${ch.warmup?'✓':'○'} · objections ${ch.objections} · négociation ${ch.negotiation?'✓':'○'} · bilan ${ch.assessment} épreuve(s).`;}$('session-finish')?.toggleAttribute('disabled',!app.session||finished);if($('session-stress-before'))$('session-stress-before').value=String(app.session?.stressBefore??'');if($('session-stress-after'))$('session-stress-after').value=String(app.session?.stressAfter??'');if($('session-stress-before'))$('session-stress-before').value=String(app.session?.stressBefore??'');if($('session-stress-after'))$('session-stress-after').value=String(app.session?.stressAfter??'');$('phase-list').innerHTML=PHASES.map((p,i)=>`<div class="phase-row ${app.session&&i===idx&&!finished?'now':''} ${app.session&&(i<idx||finished)?'completed':''}"><span class="phase-idx">0${i+1}</span><div class="phase-main"><b>${p[0]}</b><small>${p[2]}</small></div><span class="phase-time">${p[1]} MIN</span></div>`).join('');
 }
-function pickChallenge(){if(customNext){const custom={id:'CUSTOM-'+uid(),level:currentLevel(),category:'Personnalisé',role:'Interlocuteur',objection:customNext,goal:'Formuler une réponse assertive et pertinente'};customNext=null;return custom}
-const source=app.lang==='FR'?FRENCH:ENGLISH;const all=source.filter(r=>r[1]===currentLevel());const lastIds=new Set(app.records.filter(r=>r.lang===app.lang&&r.mode==='timed_objection').slice(-Math.min(4,all.length-1)).map(r=>r.challengeId));const eligible=all.filter(r=>!lastIds.has(r[0]));const arr=eligible.length?eligible:all;const topic=DAILY_TAGS[programDay()-1]||/./;const relevant=arr.filter(r=>topic.test([r[2],r[5]].join(' ')));const candidates=relevant.length?relevant:arr;const row=candidates[Math.floor(Math.random()*candidates.length)];return {id:row[0],level:row[1],category:row[2],role:row[3],objection:row[4],goal:row[5]}}
-function prepareDrill(baseline=false){ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:pickChallenge(),lang:app.lang,level:currentLevel(),condition:baseline?'baseline':'timed',deadline:baseline?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill')}
-function prepareWarmup(){ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:pickWarmup(),lang:app.lang,level:currentLevel(),condition:'warmup',deadline:20,stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill')}
+function pickChallenge(skill=null,excludeIds=[]){
+ if(customNext){const custom={id:'CUSTOM-'+uid(),level:currentLevel(),category:'Personnalisé',role:'Interlocuteur',objection:customNext,goal:'Répondre avec clarté sans surpromesse',skill:skill||dailyPlan().skill};customNext=null;return custom}
+ return choosePrompt(skill||suggestedSkill(),excludeIds);
+}
+function prepareDrill(baseline=false,skill=null,opts={}){
+ const challenge=pickChallenge(skill,opts.excludeIds||[]);
+ ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge,lang:app.lang,level:currentLevel(),condition:baseline?'baseline':opts.practicePurpose==='transfer'?'transfer':'timed',practicePurpose:opts.practicePurpose||(baseline?'baseline':'daily'),parentAttemptId:opts.parentAttemptId||null,deadline:baseline?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill');
+}
+function prepareWarmup(){ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:{...pickWarmup(),skill:dailyPlan().skill},lang:app.lang,level:currentLevel(),condition:'warmup',deadline:20,stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill')}
 function startNegotiation(id){const s=(SIMS[app.lang]||[]).find(x=>x.id===id)||SIMS[app.lang][0];negotiation={id:s.id,scenario:s,round:0,transcript:[]};prepareNegTurn()}
 function prepareNegTurn(){const s=negotiation?.scenario;if(!s)return;const turn=negotiation.round;const nextObjection=negotiation.customNext?.slice(0,2000)||s.turns[turn];negotiation.customNext=null;ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'negotiation',condition:'timed',challenge:{id:`${s.id}-T${turn+1}`,level:currentLevel(),category:s.title,role:s.role,objection:nextObjection,goal:s.goal,context:s.context},lang:app.lang,level:currentLevel(),deadline:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('negotiation')}
 function nextChallenge(){if(ongoing?.condition==='assessment_baseline'&&assessmentSet()){startAssessment('timed');return}if(ongoing?.mode==='negotiation'&&negotiation){if(negotiation.round<negotiation.scenario.turns.length-1){const text=$('next-neg-override')?.value?.trim();if(text&&text.length>2000){toast('Relance trop longue (2000 caractères maximum).');return}if(text)negotiation.customNext=text;negotiation.round++;prepareNegTurn()}else{ongoing=null;negotiation=null;save();renderExercise('negotiation');toast('Simulation de négociation terminée')}}else{prepareDrill()}}
 function timerMarkup(x){const elapsed=x.start? (x.end||performance.now())-x.start:0;const secs=Math.max(0,x.deadline-elapsed/1000);return `<div class="timer ${secs<=3?'danger':''}" id="challenge-clock">${fmtTime(secs)}</div><div class="timer-note" id="challenge-note">${secs<=0?'Délai dépassé. Vous pouvez terminer puis enregistrer.':'Le compte à rebours est actif.'}</div>`}
-function challengeCard(x,visible){return `<div class="challenge-shell"><div class="challenge-meta"><span>${esc(x.challenge.category)}</span><span>${esc(x.challenge.role)}</span><span>NIVEAU ${x.level} / 5</span><span>${x.deadline} SEC</span></div>${x.challenge.context?`<p class="small muted" style="margin-top:13px">${esc(x.challenge.context)}</p>`:''}<p class="small muted" style="margin-top:12px">Objectif : ${esc(x.challenge.goal)}</p>${visible?`<div class="challenge-quote">« ${esc(x.challenge.objection)} »</div>`:`<div class="notice" style="margin-top:12px">L'objection apparaît quand vous déclenchez le chronomètre, pour éviter de préparer la réponse à l'avance.</div>`}</div>`}
+function challengeCard(x,visible){return `<div class="challenge-shell"><div class="challenge-meta"><span>${esc(x.challenge.category)}</span><span>${esc(x.challenge.role)}</span><span>NIVEAU ${x.level} / 5</span><span>${x.deadline} SEC</span></div>${x.challenge.context?`<p class="small muted" style="margin-top:13px">${esc(x.challenge.context)}</p>`:''}<p class="small muted" style="margin-top:12px">Objectif : ${esc(x.challenge.goal)}${x.challenge.skill?` · <b>Compétence : ${esc(skillTitle(x.challenge.skill,x.lang))}</b>`:''}</p>${visible?`<div class="challenge-quote">« ${esc(x.challenge.objection)} »</div>`:`<div class="notice" style="margin-top:12px">L'objection apparaît quand vous déclenchez le chronomètre, pour éviter de préparer la réponse à l'avance.</div>`}</div>`}
 // SpeechRecognition is optional and can use a remote vendor service. No raw audio is saved by Response Lab.
 function canRecognize(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)}
 function preferredOralCapture(){return app.oralCapture==='manual'||!canRecognize()?'manual':'speech'}
