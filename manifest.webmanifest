@@ -1,13 +1,14 @@
 {
-  "name": "Response Lab — Cognitive Performance Trainer",
+  "id": "./",
+  "name": "Response Lab — Réactivité & Négociation",
   "short_name": "Response Lab",
-  "description": "Entraînement de réponses sous pression, objections et négociation.",
-  "start_url": "./index.html",
+  "description": "Entraînement local de réactivité verbale, objections chronométrées et négociation.",
+  "lang": "fr",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b111e",
-  "theme_color": "#101727",
-  "lang": "fr",
+  "theme_color": "#142e3b",
+  "background_color": "#f5f7f5",
   "icons": [
     {
       "src": "icons/icon.svg",
