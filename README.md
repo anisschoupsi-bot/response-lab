@@ -1,29 +1,28 @@
-# Response Lab 2.0
+# Response Lab 2.1
 
-Application web statique, locale, dédiée à la réactivité verbale et aux réponses aux objections sous pression.
+Application statique en français/anglais pour travailler les réponses spontanées, les objections et la négociation sous contraintes temporelles. Fonctionne localement, sans clé API, avec export/import manuel pour ChatGPT/DeepSeek.
 
-**Ouvrir :** https://anisschoupsi-bot.github.io/response-lab/
+## Démarrer
 
-Cette version apporte :
+Ouvrir https://anisschoupsi-bot.github.io/response-lab/ dans Chrome/Edge ou Android. Lire [GUIDE_UTILISATION.md](GUIDE_UTILISATION.md).
 
-- Mode **oral sans microphone** : début de parole signalé manuellement, fin de réponse chronométrée, transcription optionnelle.
-- Mode **écrit** : première saisie et durée totale mesurées.
-- Micro-exercices d'échauffement ciblés, objections à cinq niveaux, simulations de négociation.
-- Parcours indicatif de 30 jours, séance de 20 minutes et récupération après blocage.
-- Comparaison exploratoire référence/pression, sans prétention psychométrique.
-- Copie vers le coach ChatGPT Ultimate v3 ; sans appel à une API payante.
-- Conservation de la clé de stockage v1 et des formats d'import/export JSON existants.
+## Évolutions v2.1
 
-📖 [Guide d'utilisation](GUIDE_UTILISATION.md)
+- Récupération et réessai réellement allégé après stress/blocage ; promotion uniquement après trois objections distinctes comparables, sans compter les tours de négociation.
+- Rapport ChatGPT relié à sa tentative via `attempt_id` : scores coach et scores personnels séparés ; retours non appariés en attente d'association.
+- 30 séances **validées**, pas 30 jours calendaires ; contrôle minimal de réalisation des blocs et bilan initial/final de stress.
+- Épreuves réservées comparables aux jours 1,7,14,21,28,30 ; statistiques filtrées par modalité, niveau et langue.
+- Récupération d'un exercice interrompu sans prétendre que son temps est encore valable ; historique modifiable et suppression sélective.
+- Ajout d'objections variées : 50 FR + 50 EN, plus 12 exercices de bilan réservés par langue ; relance facultative manuelle de négociation via ChatGPT.
+- Interface responsive renforcée, cache service worker mis à jour, icônes d'installation PNG et SVG.
 
-## Architecture
+## Données et sécurité
 
-Sans compilation ni backend : `index.html`, `assets/app.css`, `assets/app.js`, `manifest.webmanifest`, `sw.js`, `icons/icon.svg`.
+- Les données sont conservées dans `localStorage` pour l'origine GitHub Pages uniquement : elles **ne sont pas synchronisées** ni sauvegardées sur GitHub.
+- L'export conserve le format `response-lab-backup-v1` et la clé historique `response-lab-state-v1` pour les versions antérieures.
+- Le dépôt GitHub est public : **ne pas y publier de prompts personnels, rapports, réponses réelles ni de sauvegardes**.
+- Les évaluations sont des observations pédagogiques et des auto-ratings, sans diagnostic ou promesse de transfert cognitif.
 
-## Confidentialité
+## Développement/test
 
-Seul le code du site est public. Les données d'entraînement restent dans le stockage du navigateur jusqu'à export explicite ou copie manuelle vers une IA. Ne pas pousser au dépôt les sauvegardes de l'utilisateur ni le master prompt privé.
-
-## Validation
-
-Lancer localement `python -m http.server 8765` puis ouvrir `http://localhost:8765`. Tests de navigation, exercice écrit/oral, score, historique, progression, et import à effectuer avant publication.
+Site statique : `index.html`, `assets/app.js`, `assets/app.css`, `manifest.webmanifest`, `sw.js`, `icons/`. Le script `tests/test_regression.py` exerce les principaux parcours avec Playwright/Chromium (test local, non requis pour les utilisateurs).

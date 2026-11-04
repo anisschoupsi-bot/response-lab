@@ -19,3 +19,10 @@ h1{font-size:clamp(36px,4.7vw,62px);font-weight:820;letter-spacing:-2.7px;color:
 @media(max-width:640px){.sidebar{padding:12px 12px 7px}.sidebar .brand{margin-bottom:11px}.sidebar .brand-name{font-size:16px}.nav{gap:4px;padding:0 0 5px}.nav-btn{padding:8px 11px}.main{padding:17px 13px 60px}.topbar{flex-wrap:wrap}.hero{padding:23px 20px;gap:16px}.hero h1{font-size:34px;letter-spacing:-1.7px}.hero-actions{gap:9px}.hero-actions .btn{width:100%}.hero-day{padding:17px}.guide-strip{display:block}.guide-strip .btn{margin-top:10px}.oral-controls .btn{width:100%}.timer-head{display:block}.scenario-choice{display:block}.scenario-choice .btn{margin-top:12px}.grid.three,.grid.two,.field-grid{grid-template-columns:1fr}.tag{letter-spacing:.3px}}
 
 @media(max-width:740px){.hero-day>strong{display:block}.hero-day>span{display:block}}
+/* v2.1: let grid cards shrink inside narrow mobile viewports. */
+.grid > *, .card, .compare-metric, .main, .view { min-width:0; max-width:100%; }
+.bar-chart {min-width:0; max-width:100%; overflow:hidden; gap:4px;}
+.bar-cell {min-width:0;}
+.metric-table {min-width:560px;}
+.table-wrap {max-width:100%;overflow-x:auto;}
+@media (max-width:640px) {.bar-label {font-size:8px;letter-spacing:-.4px;}}
