@@ -1,108 +1,127 @@
-# Response Lab 2.1 — Guide d'utilisation
+# Response Lab 2.2 — Guide d’utilisation (ChatGPT évaluateur)
 
-## 1. À quoi sert l'application ?
+## Le principe en une phrase
 
-Response Lab est un outil d'entraînement **local-first** aux réponses spontanées, à la gestion des objections et à la négociation. Il chronomètre les essais et garde ton historique **dans le navigateur de cet appareil**. ChatGPT/DeepSeek peuvent analyser des tentatives que tu leur transmets volontairement ; aucune API ni compte supplémentaire n'est nécessaire.
+**Tu t’entraînes ; Response Lab chronomètre et enregistre ; ChatGPT analyse la qualité des arguments.** Tu n’as plus à donner toi-même des notes de pertinence, de raisonnement et de stratégie.
 
-- Site : https://anisschoupsi-bot.github.io/response-lab/
-- Utilisation : Windows (Chrome/Edge), Android (Chrome ou navigateur compatible)
-- Langues des exercices : français et anglais. L'interface reste principalement en français.
-- Données : stockage local non chiffré dans le navigateur, sauvegarde/export/import manuel.
-- Pas de diagnostic, pas de garantie d'amélioration générale : le suivi mesure la pratique et les réponses à des exercices.
+- Application : https://anisschoupsi-bot.github.io/response-lab/
+- Windows : Chrome ou Edge ; Android : Chrome ou navigateur compatible.
+- Mode **oral** ou **écrit** ; français et anglais, niveaux indépendants.
+- Données **locales** : la sauvegarde JSON est sous ta responsabilité ; aucune synchronisation automatique ni API payante.
+- ChatGPT reçoit uniquement ce que tu décides de copier. N’y transfère pas d’informations confidentielles de tiers.
 
-## 2. Première précaution : exporter les anciennes données
+## 1. Avant de commencer
 
-Si tu as déjà utilisé la v1 ou la v2 sur ce navigateur, commence par **Historique → Export JSON**. Conserve le fichier de sauvegarde en lieu sûr. La v2.1 reprend la même clé de stockage local (`response-lab-state-v1`) et le format de sauvegarde `response-lab-backup-v1` ; les anciennes tentatives sont conservées. Les séances antérieures à cette version ne sont **pas automatiquement considérées comme des jours validés**.
+**Historique → Export JSON**, puis conserve cette sauvegarde. La version 2.2 conserve la clé locale et le format de sauvegarde des versions précédentes : une mise à jour normale ne doit pas effacer tes résultats. Les anciennes auto-notes, si présentes, demeurent dans l’historique pour compatibilité, mais **ne sont plus demandées ni utilisées pour les nouvelles promotions de niveau**.
 
-## 3. Ta séance quotidienne de 20 minutes
+Si ton navigateur affiche encore l’ancienne version, ferme et réouvre l’onglet, puis recharge la page. Ne supprime pas les données du site sans avoir réalisé une sauvegarde.
 
-1. **Tableau de bord → Démarrer ma séance de 20 min.** Sélectionne ton stress de départ (0–10, facultatif).
-2. **2 min — Calibration.** Vérifie le niveau FR/EN et le stress ; ne cherche pas à augmenter la pression artificiellement.
-3. **3 min — Échauffement.** Clique **Micro-exercice · 20 s** ; entraîne une réponse très courte.
-4. **9 min — Objections.** Ouvre **Entraînement → Démarrer un défi** ; réponds à plusieurs objections selon le temps disponible.
-5. **4 min — Négociation.** Ouvre **Négociation**, choisis un scénario et effectue au moins un tour ; trois tours sont proposés.
-6. **2 min — Bilan.** Dans l'historique/progrès, observe les mesures, puis indique le stress final (facultatif).
-7. Reviens sur le **Tableau de bord → Valider la séance**. Pour faire avancer le parcours, il faut 20 minutes écoulées, au moins un échauffement, une objection chronométrée et un tour de négociation enregistrés **dans cette séance**.
+## 2. Scénario écrit : une objection client
 
-Tu peux interrompre et reprendre une séance ; le temps passé dans un onglet masqué n'est pas censé compter comme du temps d'entraînement. La progression est calculée **à partir des séances validées**, pas à partir du nombre de jours calendaires écoulés. Les activités anciennes restent dans l'historique, mais ne valident pas rétroactivement une séance.
+1. Ouvre **Entraînement**, puis **Démarrer un défi**.
+2. Dans le choix de modalité, sélectionne **Réponse écrite**.
+3. Clique **Afficher l’objection et démarrer**. L’objection apparaît avec le chronomètre.
+4. Rédige une réponse courte et crédible ; clique sur le bouton pour **terminer la tentative**.
+5. Le bilan affiche le temps jusqu’à la première frappe, la durée totale et le délai cible. Indique **Stress (0 à 10)** et **Blocage : oui / non / inconnu**, si tu le souhaites. Tu peux ajouter une observation personnelle.
+6. Clique **Enregistrer la tentative**. C’est terminé pour l’exercice ; aucune note de qualité n’est exigée.
+7. Sur l’écran « Tentative enregistrée », clique **Copier pour ChatGPT**, colle la fiche dans ton coach ChatGPT (Master Prompt Ultimate v3).
+8. ChatGPT est invité à produire **uniquement un objet JSON** au format `cognitive-response-v1`, avec la même valeur `attempt_id`.
+9. Copie la réponse JSON de ChatGPT. Reviens dans Response Lab et colle-la directement dans le champ **Coller ici le JSON envoyé par ChatGPT**, puis clique **Importer l’évaluation IA**. Tu peux aussi le faire dans **Historique → Évaluation JSON de ChatGPT**.
+10. La tentative est enrichie de l’évaluation de ChatGPT, **sans doublon**. Consulte **Progrès** pour voir les notes IA et les tendances.
 
-## 4. Réponses orales (mode recommandé)
+Exemple d’objection : « Votre concurrent est moins cher. Pourquoi devrions-nous vous choisir ? ». Réponds spontanément **avant** de chercher une meilleure formulation.
+
+**À distinguer :** le délai de première frappe n’est pas une mesure pure du temps de réflexion. La durée totale inclut l’écriture.
+
+## 3. Scénario oral : confrontation professionnelle
 
 1. Dans **Entraînement**, sélectionne **Réponse orale**.
-2. Clique **Afficher l'objection et démarrer**.
-3. Au premier mot prononcé, clique **Je commence à parler** : il s'agit d'un repère **manuel approximatif**.
-4. Réponds en une à trois phrases, puis clique **J'ai terminé ma réponse**.
-5. Ajoute éventuellement une transcription fidèle ; note pertinence, raisonnement et stratégie (0–4) seulement si tu peux les apprécier. Renseigne stress et blocage si connus.
-6. Clique **Enregistrer la tentative**.
+2. Clique **Afficher l’objection et démarrer**.
+3. Commence à parler réellement à haute voix, puis clique **Je commence à parler** au début de ta prise de parole (repère approximatif).
+4. Termine ta réponse (une à trois phrases), puis clique **J’ai terminé ma réponse**.
+5. Indique ton stress et ton éventuel blocage ; ajoute **facultativement une transcription fidèle de ce que tu as effectivement dit**.
+6. Enregistre. Pour que ChatGPT évalue la **qualité du contenu oral**, la transcription est nécessaire : sans transcription, l’application conserve les mesures et ton ressenti, mais **la qualité reste non évaluée**.
+7. Si tu as fourni une transcription, utilise **Copier pour ChatGPT → coller le JSON obtenu → Importer l’évaluation IA** comme en mode écrit.
 
-L'application **n'écoute pas** ta voix ; les clics et délais manuels ne permettent pas de juger la fluidité acoustique, le débit ou les hésitations.
+L’application **n’écoute et n’enregistre pas** ta voix. Le clic « Je commence à parler » ne mesure pas le débit, les hésitations acoustiques, l’intonation ni la prononciation. Les temps oraux et écrits sont affichés séparément.
 
-## 5. Réponses écrites
+## 4. Séance quotidienne de 20 minutes
 
-Choisis **Réponse écrite** ; l'application relève le délai de première frappe et la durée jusqu'au clic de fin. Ces mesures incluent la rédaction et **ne doivent pas être comparées directement** à celles du mode oral.
+Dans **Tableau de bord → Démarrer ma séance de 20 min** :
 
-## 6. Réessai après blocage et progression adaptative
+| Durée | Étape |
+|---|---|
+| 2 min | Calibration : niveau et stress initial |
+| 3 min | Échauffement : au moins un micro-exercice |
+| 9 min | Objections chronométrées : au moins une tentative enregistrée |
+| 4 min | Négociation : au moins un tour enregistré |
+| 2 min | Bilan, stress final et validation |
 
-- **Niveaux** : 1=30 s, 2=20 s, 3=15 s, 4=10 s, 5=5 s.
-- Si tu déclares un stress de 8/10 ou plus, ou deux blocages successifs comparables, le niveau est maintenu ou réduit. **Réessayer** utilise désormais le niveau courant et un délai élargi si nécessaire.
-- La promotion automatique requiert trois **objections chronométrées distinctes**, au même niveau et dans la même langue/modalité, avec trois scores ≥3/4, sans blocage déclaré, stress ≤6/10 et réponse dans le délai. Les tours de négociation, bilans, échauffements et réessais ne provoquent pas de promotion.
-- Les seuils sont des règles pédagogiques de départ, **pas des normes cliniques**. Ne poursuis pas si le stress devient excessif.
+Le chrono de séance suggère ces phases, mais ne change pas automatiquement de module. Pour **Valider la séance**, il faut 20 minutes réellement comptabilisées, un échauffement, une objection chronométrée et un tour de négociation dans la séance en cours. Le parcours avance selon les séances validées, jamais seulement selon les jours calendaires.
 
-## 7. Programme de 30 séances et bilans périodiques
+**Fréquence cible :** jusqu’à 20 minutes par jour, selon ta disponibilité et ton niveau de pression. Il est normal de ralentir après un blocage.
 
-Le panneau **Jour du parcours** indique la prochaine séance à accomplir. Même après une semaine sans entraînement, il **n'avance pas tout seul**.
+## 5. Qui attribue les notes et comment évolue la difficulté ?
 
-Aux étapes **1, 7, 14, 21, 28 et 30**, ouvre **Entraînement → Bilan inédit · épreuves appariées** :
+- **Toi :** seulement le stress (0–10), le blocage et éventuellement un commentaire. Tous facultatifs.
+- **Response Lab :** début de réponse, durée, délai, date, langue, modalité, niveau. Il ne juge pas automatiquement le contenu.
+- **ChatGPT :** trois estimations de coach, entre 0 et 4 : **pertinence**, **raisonnement**, **stratégie**. Sans texte, pas de note.
 
-- Une objection confortable (60 secondes), suivie d'une autre formulation de même thème sous pression ; les tâches sont réservées aux bilans et ne servent pas à l'entraînement courant.
-- Évalue les deux réponses de la même manière et conserve la même modalité FR/EN.
-- Dans **Progrès**, une comparaison n'est affichée que si les deux parties existent, sont notées et partagent le même niveau. Les scores restent subjectifs et les formulations ne sont pas parfaitement équivalentes.
+La diminution de pression après stress élevé (≥ 8/10) ou blocages répétés reste **immédiate**. Une **montée automatique** demande trois objections chronométrées **distinctes et comparables**, même langue/modalité/niveau, chacune notée ≥ 3/4 **par ChatGPT**, dans le délai, avec stress connu ≤ 6/10 et absence déclarée de blocage. Sans évaluations IA ou données suffisantes, le niveau est **maintenu**, pas artificiellement abaissé.
 
-L'application donne la préférence à certains sujets selon le jour du parcours, **dans la limite du niveau et des exercices disponibles**. Le programme est adaptatif, pas un plan rigide qui raccourcit obligatoirement les délais.
+Les seuils sont des heuristiques pédagogiques, pas des normes cliniques. Tu peux ajuster le niveau dans **Réglages**.
 
-## 8. Négociations avec ou sans ChatGPT
+## 6. Coller le retour IA sans fichier
 
-Dans **Négociation**, lance un scénario de trois tours. Les objections restent scénarisées par défaut, donc ne dépendent pas automatiquement de tes réponses.
+Après **Copier pour ChatGPT**, ChatGPT doit répondre avec un JSON contenant la structure suivante (valeurs illustratives uniquement) :
 
-Pour une simulation plus réaliste sans API : après un tour, colle dans le champ facultatif **la prochaine objection formulée par ChatGPT** à partir de ton précédent argument. Clique ensuite **Prochaine objection**. Cette relance manuelle remplace celle du script. Évite les informations confidentielles sur de vraies personnes.
+```json
+{
+  "schema": "cognitive-response-v1",
+  "session_id": "response-lab-local",
+  "language": "FR",
+  "attempts": [{
+    "attempt_id": "ID-EXACT-DE-LA-TENTATIVE",
+    "challenge_id": "ID-EXACT-DU-DEFI",
+    "language": "FR",
+    "relevance_0_4": 3,
+    "reasoning_0_4": 3,
+    "strategy_0_4": 4,
+    "feedback_note": "Une force ; une faiblesse ; une correction et un réessai."
+  }]
+}
+```
 
-## 9. Utiliser ChatGPT 6 / DeepSeek et réimporter une évaluation
+Tu n'as pas à construire cet objet toi-même : le message **Copier pour ChatGPT** contient déjà les instructions et l’identifiant. Colle **la réponse JSON** (ou un bloc ```json ... ```) dans l'application. Ne colle pas le message de demande envoyé à ChatGPT. Le champ accepte aussi les blocs Markdown JSON seuls.
 
-1. Après la tentative, clique **Copier pour ChatGPT**, ou **Historique → ChatGPT** sur une tentative précédente.
-2. Colle la fiche dans la conversation où ton Master Prompt Ultimate v3 est chargé. Il doit évaluer uniquement le contenu observable.
-3. Pour réimporter les notes du coach, demande un rapport JSON `cognitive-response-v1` qui inclut **`attempts[0].attempt_id`**, l'identifiant de ta tentative.
-4. **Historique → Import JSON**. Les notes du coach s'ajoutent à la tentative existante, dans des champs **distincts** des auto-notes. L'import ne crée plus une deuxième tentative si l'identifiant correspond.
-5. Si la tentative ne peut pas être associée sans ambiguïté, son retour reste dans une **boîte de réception IA non associée** de l'historique. Tu peux choisir la bonne tentative manuellement avec **Associer**.
+Si l’identifiant ne correspond pas à une tentative locale ou qu’un autre défi est indiqué, l’évaluation restera dans les **retours IA non associés**, avec association manuelle depuis l’Historique.
 
-Ce fonctionnement est **manuel** : l'application ne se connecte pas automatiquement à ChatGPT et ne récupère pas le contenu d'autres conversations.
+Si tu utilises le bouton **Import JSON**, il sert toujours à importer un **fichier** de sauvegarde ou d’évaluation, mais ce n’est plus nécessaire pour une seule analyse.
 
-## 10. Tableau de bord et historique
+## 7. Bilan de progression
 
-Dans **Progrès**, choisis d'abord **oral/écrit** puis **niveau**. Le tableau calcule séparément :
+Dans **Progrès**, choisis la langue, puis la modalité oral/écrit et éventuellement le niveau. Tu verras :
 
-- blocages rapportés ;
-- délai avant réponse (clic oral manuel ou première frappe écrite) ;
-- qualité auto-évaluée (0–4) ;
-- qualité éventuellement évaluée par le coach, sur les mêmes tentatives ;
-- bilan apparié confortable/pression pour les épreuves réservées.
+- le nombre de blocages déclarés ;
+- le temps moyen avant prise de parole signalée ou première frappe ;
+- la **qualité évaluée par ChatGPT** et le nombre de tentatives évaluées ;
+- le nombre de tentatives attendant encore un retour IA ;
+- les comparaisons confortable/pression **seulement si les deux épreuves possèdent des notes IA**.
 
-Chaque valeur indique le nombre d'essais renseignés. Les scores de différentes modalités ou sources ne sont pas ajoutés les uns aux autres. L'activité ne démontre pas à elle seule un gain de capacité cognitive générale.
+Les bilans de référence aux séances 1, 7, 14, 21, 28 et 30 restent disponibles. Les notes IA sont des jugements du coach, non des mesures psychométriques, et ne garantissent pas un transfert vers des situations réelles.
 
-Dans **Historique**, tu peux **corriger une auto-évaluation**, **supprimer une tentative** ou **copier** son contenu. Corriger une ancienne note ne recalcule pas rétroactivement la suite des niveaux déjà attribués.
+## 8. Sauvegarder et transférer tes résultats
 
-## 11. Sauvegarde, migration et installation
+- **Historique → Export JSON :** sauvegarde complète. Fais-le régulièrement, surtout avant de changer d’appareil.
+- **Historique → Import JSON :** import/fusion d’une sauvegarde, sans créer de doublons pour les identifiants reconnus.
+- **Export CSV :** tableau de consultation (ne remplace pas une sauvegarde JSON).
+- Sur Android, utilise Chrome → ⋮ → **Installer** ou **Ajouter à l'écran d'accueil**, si proposé.
+- Sur Windows, utilise l’option **Installer cette application** de Chrome/Edge, si proposée.
 
-- **Export JSON** : sauvegarde locale complète (`response-lab-backup-v1`), compatible avec les sauvegardes antérieures. Exporte régulièrement, notamment avant de changer de navigateur ou d'appareil.
-- **Import JSON** : fusion par identifiant de tentative et de séance, sans duplication. Les sauvegardes ne synchronisent pas automatiquement les appareils.
-- **Export CSV** : tableau de travail ; ce n'est **pas** une sauvegarde de restauration.
-- **Installation Windows** : dans Chrome ou Edge, ouvre l'URL HTTPS puis menu → installer ce site comme application, si proposé.
-- **Installation Android** : dans Chrome, ouvre l'URL HTTPS puis menu ⋮ → Installer / Ajouter à l'écran d'accueil, selon disponibilité.
-- Le site conserve les fichiers de l'application pour un usage hors ligne **après une première visite** sous un navigateur compatible, mais le cache et les mises à jour doivent être vérifiés sur l'appareil réel.
+Les données sont enregistrées dans le navigateur, **pas** dans GitHub. Une suppression du stockage du site peut supprimer l’historique. La version de l’application est publique, tes séances restent locales tant que tu ne les copies pas ailleurs.
 
-En cas d'ancienne version affichée après la mise en ligne : ferme et rouvre le site, actualise, ou vide le cache du site **après** avoir exporté les données (vider le stockage pourrait effacer l'historique).
+## 9. Limites
 
-## 12. Limites connues
+L'intégration ChatGPT est **manuelle**, sans API. Les négociations ne s’adaptent pas automatiquement sans relance copiée depuis ChatGPT. L’application ne réalise pas d’analyse audio. Les évaluations de ChatGPT sont approximatives et les progrès réels ne sont pas garantis. Pas de diagnostic clinique.
 
-Le mode oral ne détecte pas la voix, les scénarios de négociation ne réagissent pas automatiquement à tes réponses, et l'interface n'est pas entièrement traduite en anglais. La validité des évaluations et le transfert des performances à la vie réelle ne sont pas garantis. Les tests automatisés locaux ne remplacent pas une vérification sur tes appareils Windows/Android.
-
-**Version : 2.1 · Données locales · Aucune API payante · Usage pédagogique, pas médical.**
+**Version 2.2 — zéro coût API additionnel ; Windows et Android.**

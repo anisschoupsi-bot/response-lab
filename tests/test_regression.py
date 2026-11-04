@@ -9,6 +9,7 @@ def fresh(browser, seed=None, viewport=None):
  p=browser.new_page(viewport=viewport or {'width':1440,'height':900});err=[];p.on('pageerror',lambda e:err.append(str(e)))
  p.goto('about:blank')
  p.evaluate('''(seed) => {const data={};if(seed)data['response-lab-state-v1']=JSON.stringify(seed);Object.defineProperty(window,'localStorage',{configurable:true,value:{getItem:k=>data[k]??null,setItem:(k,v)=>data[k]=v,removeItem:k=>delete data[k]}})}''',seed)
+ p.set_default_timeout(5000)
  p.set_content(HTML)
  assert not err,err
  return p,err
@@ -22,8 +23,6 @@ def reply(page,stress='5',blocked='no',scores=True,mode='oral'):
  else:page.locator('#response-text').fill('Je propose une expérimentation mesurable.')
  act(page,'submit-challenge')
  if mode=='oral':page.locator('#review-transcript').fill('Je propose une expérimentation mesurable.')
- if scores:
-  for key in ('relevance','reasoning','strategy'):page.locator(f'[data-score="{key}"][data-value="3"]').click()
  page.locator('#stress-select').select_option(stress)
  page.locator('#blocked-select').select_option(blocked)
  act(page,'save-challenge')
@@ -42,9 +41,9 @@ with sync_playwright() as pw:
  p,err=fresh(browser);view(p,'drill');act(p,'new-drill');reply(p)
  s=state(p);r=s['records'][0];report={'schema':'cognitive-response-v1','session_id':'local-app','language':'FR','attempts':[{'attempt_id':r['id'],'challenge_id':r['challengeId'],'deadline_sec':r['deadlineSec'],'relevance_0_4':4,'reasoning_0_4':3,'strategy_0_4':4,'feedback_note':'Bien joué'}]}
  view(p,'history');p.locator('#import-file').set_input_files({'name':'coach.json','mimeType':'application/json','buffer':json.dumps(report).encode()})
- s=state(p);assert len(s['records'])==1,s['records']; assert s['records'][0]['relevance']==3;assert s['records'][0]['coachScores']['relevance']==4
+ s=state(p);assert len(s['records'])==1,s['records']; assert s['records'][0]['relevance'] is None;assert s['records'][0]['coachScores']['relevance']==4
  p.locator('#import-file').set_input_files({'name':'coach.json','mimeType':'application/json','buffer':json.dumps(report).encode()});assert len(state(p)['records'])==1
- print('PASS R2: coach report merges, self-scores retained, reimport idempotent')
+ print('PASS R2: coach report merges with unscored local attempt, reimport idempotent')
  # R3 unlinked report inbox
  report['attempts'][0]['attempt_id']='unmatched-id';p.locator('#import-file').set_input_files({'name':'missing.json','mimeType':'application/json','buffer':json.dumps(report).encode()})
  assert len(state(p)['records'])==1;assert len(state(p)['coachInbox'])==1
@@ -80,7 +79,12 @@ with sync_playwright() as pw:
  p,err=fresh(browser)
  view(p,'drill');act(p,'assessment');reply(p);act(p,'next-challenge');reply(p)
  st=state(p);rows=st['records'];assert len(rows)==2;assert len(set(r['assessmentPair'] for r in rows))==1
- view(p,'progress');assert '1 PAIRE(S)' in p.locator('#progress-content').inner_text();print('PASS R8: unseen paired assessment and comparison')
+ assert all(r['relevance'] is None for r in rows)
+ view(p,'progress');assert '0 PAIRE(S)' in p.locator('#progress-content').inner_text()
+ view(p,'history')
+ report={'schema':'cognitive-response-v1','session_id':'response-lab-local','language':'FR','attempts':[{'attempt_id':r['id'],'challenge_id':r['challengeId'],'relevance_0_4':3,'reasoning_0_4':3,'strategy_0_4':3,'feedback_note':'Analyse.'} for r in rows]}
+ p.locator('#coach-json-history').fill(json.dumps(report));act(p,'paste-coach')
+ view(p,'progress');assert '1 PAIRE(S)' in p.locator('#progress-content').inner_text();print('PASS R8: pairs require two coach evaluations')
  p.close()
  # R9 interrupted challenge restored without deadline claim
  p,err=fresh(browser);view(p,'drill');act(p,'new-drill');act(p,'begin-challenge')

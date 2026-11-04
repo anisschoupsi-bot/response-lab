@@ -1,19 +1,24 @@
 # Journal des changements — Response Lab
 
+## 2.2 — Évaluation par ChatGPT, sans auto-notes obligatoires
+
+- Après une tentative : stress, blocage et observation facultative seulement ; plus de boutons pertinence/raisonnement/stratégie à noter soi-même.
+- Enregistrement immédiat des réponses même sans score ; affichage « qualité non évaluée » en attendant le retour IA.
+- Bouton « Copier pour ChatGPT » après enregistrement, avec consigne de réponse JSON valide et `attempt_id` précis.
+- Import direct d’un JSON ChatGPT par simple collage, depuis la tentative enregistrée ou depuis l’historique. Le fichier JSON reste possible pour les sauvegardes.
+- Fusion des trois scores du coach dans la tentative d'origine, sans écraser les anciennes auto-notes ni créer de doublon.
+- Tableau de bord : qualité IA comme valeur principale ; bilans appariés affichés uniquement lorsque les deux réponses ont été analysées.
+- Adaptation : sécurité immédiate après stress ou blocages ; promotion fondée sur trois évaluations de ChatGPT (réponses distinctes, mode/langue/niveau comparables et mesures suffisantes), jamais sur l'absence de note.
+- Préservation de la clé locale, du format backup v1, de l’historique et des préférences ; le code de la version 2.1 continue d'être accessible dans l'historique GitHub.
+- Tests : 10 cas de régression et 6 nouveaux cas spécifiques à l’évaluation IA.
+
 ## 2.1 — Fiabilisation et parcours guidé
 
-- Correction des 4 anomalies reproduites par l'audit v2.0 : stress/réessai, doublons de rapports IA, faux Jour 30, promotions de niveau par tours non comparables.
-- Séparation des scores IA et auto-évaluations, et filtres de progression par langue, mode et niveau.
-- Validation du parcours basée sur séances réellement effectuées, avec bilan de stress et temps suivi.
-- Bilans appariés et inédits aux séances 1, 7, 14, 21, 28, 30 ; conditions confort/pression distinctes.
-- Extension de 25 à 50 objections par langue, avec contextes de conflits, négociations et entretiens.
-- Reprise après interruption et édition/suppression ciblées de l'historique.
-- Réponse optionnelle de ChatGPT pour le tour suivant d'une négociation, saisie manuellement.
-- Réduction des débordements mobiles, PWA rafraîchie, conservation des anciens exports.
+- Corrections stress/réessai, import IA sans doublons, programme de 30 séances, promotion injustifiée par la négociation.
+- Bilans par paires, suivi séparé oral/écrit, historique modifiable, banque de 50 objections par langue et relance de négociation manuelle.
 
-### Limitations restantes
+## Limites actuelles
 
-- La voix n'est ni enregistrée ni analysée ; mesure de début de parole manuelle approximative.
-- L'interface anglaise n'est pas entièrement localisée ; les négociations restent scénarisées sans relance externe fournie.
-- Les résultats d'un entraînement de 30 jours n'ont pas été validés scientifiquement.
-- Vérification sur les appareils réels requise.
+- Pas d’analyse audio automatique ; sans transcription orale, pas de note de contenu.
+- Échange ChatGPT manuel ; pas de connexion automatique ni de synchronisation entre appareils.
+- Les évaluations de l’IA ne constituent pas un test psychométrique validé.

@@ -1,28 +1,32 @@
-# Response Lab 2.1
+# Response Lab 2.2 — entraînement cognitif et coach ChatGPT
 
-Application statique en français/anglais pour travailler les réponses spontanées, les objections et la négociation sous contraintes temporelles. Fonctionne localement, sans clé API, avec export/import manuel pour ChatGPT/DeepSeek.
+Application web locale, sans clé API ni abonnement supplémentaire. Elle chronomètre les réponses orales (repère manuel) et écrites (première frappe), entraîne les objections et négociations, suit la pression déclarée et conserve les séances localement. **La qualité des arguments est évaluée par ChatGPT lorsque tu lui transmets une réponse**, pas par des boutons de note personnelle.
 
-## Démarrer
+Site : https://anisschoupsi-bot.github.io/response-lab/
+Guide : [GUIDE_UTILISATION.md](GUIDE_UTILISATION.md)
 
-Ouvrir https://anisschoupsi-bot.github.io/response-lab/ dans Chrome/Edge ou Android. Lire [GUIDE_UTILISATION.md](GUIDE_UTILISATION.md).
+## Démarrage
 
-## Évolutions v2.1
+1. **Historique → Export JSON** pour conserver toute sauvegarde préalable.
+2. **Entraînement → Démarrer un défi** ; choisir oral ou écrit et répondre.
+3. Indiquer, si souhaité, le **stress** et le **blocage** ; **Enregistrer la tentative**. Aucun score de qualité à remplir.
+4. Cliquer sur **Copier pour ChatGPT** ; coller dans le chat contenant le Master Prompt Ultimate v3. La réponse attendue est un objet JSON d’évaluation `cognitive-response-v1`.
+5. Dans Response Lab, **coller le JSON directement** après la tentative ou dans **Historique → Évaluation JSON de ChatGPT** ; cliquer **Importer le retour IA**.
+6. Consulter **Progrès** pour les notes du coach, les délais, les blocages et le suivi des 30 séances.
 
-- Récupération et réessai réellement allégé après stress/blocage ; promotion uniquement après trois objections distinctes comparables, sans compter les tours de négociation.
-- Rapport ChatGPT relié à sa tentative via `attempt_id` : scores coach et scores personnels séparés ; retours non appariés en attente d'association.
-- 30 séances **validées**, pas 30 jours calendaires ; contrôle minimal de réalisation des blocs et bilan initial/final de stress.
-- Épreuves réservées comparables aux jours 1,7,14,21,28,30 ; statistiques filtrées par modalité, niveau et langue.
-- Récupération d'un exercice interrompu sans prétendre que son temps est encore valable ; historique modifiable et suppression sélective.
-- Ajout d'objections variées : 50 FR + 50 EN, plus 12 exercices de bilan réservés par langue ; relance facultative manuelle de négociation via ChatGPT.
-- Interface responsive renforcée, cache service worker mis à jour, icônes d'installation PNG et SVG.
+### Données et migration
 
-## Données et sécurité
+- Clé navigateur : `response-lab-state-v1`, inchangée depuis v1.
+- Sauvegarde : `response-lab-backup-v1`, compatible avec les archives historiques.
+- Les anciennes auto-notes sont conservées dans les sauvegardes, mais la version 2.2 ne demande plus à en saisir et n'en dépend pas pour promouvoir le niveau.
+- Les données ne sont pas automatiquement synchronisées entre Windows et Android.
+- Le site GitHub est public ; l’historique reste local au navigateur, sauf export ou copie volontaire.
 
-- Les données sont conservées dans `localStorage` pour l'origine GitHub Pages uniquement : elles **ne sont pas synchronisées** ni sauvegardées sur GitHub.
-- L'export conserve le format `response-lab-backup-v1` et la clé historique `response-lab-state-v1` pour les versions antérieures.
-- Le dépôt GitHub est public : **ne pas y publier de prompts personnels, rapports, réponses réelles ni de sauvegardes**.
-- Les évaluations sont des observations pédagogiques et des auto-ratings, sans diagnostic ou promesse de transfert cognitif.
+## Tests
 
-## Développement/test
+```bash
+python tests/test_regression.py
+python tests/test_ai_first.py
+```
 
-Site statique : `index.html`, `assets/app.js`, `assets/app.css`, `manifest.webmanifest`, `sw.js`, `icons/`. Le script `tests/test_regression.py` exerce les principaux parcours avec Playwright/Chromium (test local, non requis pour les utilisateurs).
+Nécessite Python, Playwright et Chromium. Les tests de navigateur ne démontrent pas à eux seuls un gain de compétence réelle et ne remplacent pas des essais sur les appareils de l'utilisateur.
