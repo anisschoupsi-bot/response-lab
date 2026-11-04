@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Response Lab 2.1 — Réactivité & Négociation",
+  "name": "Response Lab 2.3 — Entraînement oral",
   "short_name": "Response Lab",
-  "description": "Entraînement local de réactivité verbale, objections chronométrées et négociation.",
+  "description": "Pratique orale des objections : transcription quand disponible, chronométrage, correction et analyse volontaire par ChatGPT.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

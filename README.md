@@ -1,32 +1,37 @@
-# Response Lab 2.2 — entraînement cognitif et coach ChatGPT
+# Response Lab 2.3 — Entraînement oral d'objections
 
-Application web locale, sans clé API ni abonnement supplémentaire. Elle chronomètre les réponses orales (repère manuel) et écrites (première frappe), entraîne les objections et négociations, suit la pression déclarée et conserve les séances localement. **La qualité des arguments est évaluée par ChatGPT lorsque tu lui transmets une réponse**, pas par des boutons de note personnelle.
+Application web statique et installable (PWA) pour pratiquer des réponses spontanées en français et en anglais, mesurer les délais de réponse et suivre l'entraînement de manière local-first.
 
-Site : https://anisschoupsi-bot.github.io/response-lab/
-Guide : [GUIDE_UTILISATION.md](GUIDE_UTILISATION.md)
+**Ouvrir :** https://anisschoupsi-bot.github.io/response-lab/
 
-## Démarrage
+## 2.3 : parole d'abord
 
-1. **Historique → Export JSON** pour conserver toute sauvegarde préalable.
-2. **Entraînement → Démarrer un défi** ; choisir oral ou écrit et répondre.
-3. Indiquer, si souhaité, le **stress** et le **blocage** ; **Enregistrer la tentative**. Aucun score de qualité à remplir.
-4. Cliquer sur **Copier pour ChatGPT** ; coller dans le chat contenant le Master Prompt Ultimate v3. La réponse attendue est un objet JSON d’évaluation `cognitive-response-v1`.
-5. Dans Response Lab, **coller le JSON directement** après la tentative ou dans **Historique → Évaluation JSON de ChatGPT** ; cliquer **Importer le retour IA**.
-6. Consulter **Progrès** pour les notes du coach, les délais, les blocages et le suivi des 30 séances.
+- Choix **oral + transcription**, **oral sans micro**, **écrit**. Le mode avec transcription est proposé quand l'API `SpeechRecognition` est disponible.
+- Compte à rebours démarré **après activation de la reconnaissance**, sans consommer le temps dans la boîte de permission du navigateur.
+- Affichage de transcription intermédiaire et finale, édition humaine à la fin de l'exercice ; la voix elle-même n'est ni enregistrée ni stockée par l'application.
+- Gestion de permission refusée, reconnaissance interrompue, reconnexion manuelle, onglet masqué, navigation et conservation du brouillon.
+- Statistiques distinguant les méthodes de début de réponse ; délai vocal toujours indicatif.
+- **Enregistrer et préparer l'analyse ChatGPT** en un geste : copie, sans transfert automatique. Notes de qualité importées plus tard sans doublons.
+- Transcription corrigée après l'analyse → invalidation des notes IA devenues obsolètes.
+- Sauvegarde locale conservant `response-lab-state-v1`, export `response-lab-backup-v1` compatible avec v1/2.
+- Sessions de 20 minutes, 30 séances validées, bilans et adaptation déjà présents.
 
-### Données et migration
+## Confidentialité et disponibilité
 
-- Clé navigateur : `response-lab-state-v1`, inchangée depuis v1.
-- Sauvegarde : `response-lab-backup-v1`, compatible avec les archives historiques.
-- Les anciennes auto-notes sont conservées dans les sauvegardes, mais la version 2.2 ne demande plus à en saisir et n'en dépend pas pour promouvoir le niveau.
-- Les données ne sont pas automatiquement synchronisées entre Windows et Android.
-- Le site GitHub est public ; l’historique reste local au navigateur, sauf export ou copie volontaire.
+Le site GitHub et son code sont publics ; les réponses et résultats de l'utilisateur sont dans `localStorage` sur son appareil. **Le moteur de reconnaissance vocale du navigateur peut transmettre l'audio à son fournisseur**, selon son implémentation. La transcription n'est pas garantie en mode hors ligne. Choisir **oral sans micro** pour éviter cette fonctionnalité. L'application ne téléverse pas l'historique vers GitHub et n'enregistre aucun fichier audio.
 
-## Tests
+Aucune API d'IA payante, pas d'envoi automatique à ChatGPT/DeepSeek. Les sauvegardes JSON et les textes collés volontairement dans un coach doivent être traités comme des données privées.
+
+## Développer et tester
+
+Pas de compilation requise : `index.html`, `assets/app.js`, `assets/app.css`, `sw.js`, `manifest.webmanifest` et icônes. Les tests se lancent avec Python, Playwright et Chromium :
 
 ```bash
 python tests/test_regression.py
 python tests/test_ai_first.py
+python tests/test_speech_first.py
 ```
 
-Nécessite Python, Playwright et Chromium. Les tests de navigateur ne démontrent pas à eux seuls un gain de compétence réelle et ne remplacent pas des essais sur les appareils de l'utilisateur.
+Les tests de `test_speech_first.py` utilisent un **SpeechRecognition simulé** ; ils ne prouvent pas le fonctionnement matériel du micro sur chaque téléphone.
+
+Voir [GUIDE_UTILISATION.md](GUIDE_UTILISATION.md) pour le parcours détaillé et [AUDIT_V2_3.md](AUDIT_V2_3.md) pour les limites résiduelles.

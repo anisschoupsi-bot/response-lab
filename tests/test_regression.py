@@ -18,6 +18,7 @@ def state(page):return page.evaluate(f"JSON.parse(localStorage.getItem('{KEY}'))
 def act(page,name):page.locator(f'button[data-action="{name}"]:visible').first.click()
 def view(page,name):page.locator(f'button[data-view="{name}"]:visible').first.click()
 def reply(page,stress='5',blocked='no',scores=True,mode='oral'):
+ if mode=='oral' and page.locator('button[data-action="set-mode"][data-mode="manual"]').count():page.locator('button[data-action="set-mode"][data-mode="manual"]').click()
  act(page,'begin-challenge')
  if mode=='oral':act(page,'mark-onset')
  else:page.locator('#response-text').fill('Je propose une expérimentation mesurable.')
@@ -89,7 +90,7 @@ with sync_playwright() as pw:
  # R9 interrupted challenge restored without deadline claim
  p,err=fresh(browser);view(p,'drill');act(p,'new-drill');act(p,'begin-challenge')
  saved=state(p);p.close();p,err=fresh(browser,saved);view(p,'drill')
- assert 'Exercice interrompu retrouvé' in p.locator('#drill-content').inner_text(),p.locator('#drill-content').inner_text()[:350]
+ assert 'Exercice interrompu' in p.locator('#drill-content').inner_text(),p.locator('#drill-content').inner_text()[:350]
  print('PASS R9: interrupted challenge restarted safely')
  p.close()
  # R10 mobile no overflow

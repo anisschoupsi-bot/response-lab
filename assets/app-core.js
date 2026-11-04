@@ -1,0 +1,293 @@
+'use strict';
+const KEY='response-lab-state-v1';
+const LEVELS=[30,20,15,10,5];
+const PHASES=[['Calibration',2,'Stress et niveau de départ'],['Échauffement',3,'Sélection rapide d’idées'],['Objections',9,'Défis chronométrés'],['Négociation',4,'Trois échanges ciblés'],['Bilan',2,'Évaluation et sauvegarde']];
+const FRENCH=[
+['F01',1,'Réunion','Responsable','Votre proposition coûte trop cher pour un bénéfice incertain.','Défendre la valeur sans nier le risque'],
+['F02',1,'Client','Client','Je ne comprends pas pourquoi nous devrions vous faire confiance.','Rétablir une base de confiance'],
+['F03',1,'Négociation','Partenaire','Votre délai est beaucoup trop long.','Reformuler les attentes et proposer une option'],
+['F04',1,'Réunion','Collègue','Cette idée ne marchera jamais.','Faire préciser l’objection'],
+['F05',1,'Management','Manager','Votre analyse manque de clarté.','Recentrer votre argument'],
+['F06',2,'Budget','Directrice financière','Nous avons déjà une solution moins chère. Pourquoi changer ?','Différencier la valeur apportée'],
+['F07',2,'Management','Manager','Vous défendez cette idée, mais quels résultats concrets pouvez-vous garantir ?','Reconnaître l’incertitude tout en défendant votre méthode'],
+['F08',2,'Client','Acheteur','Un concurrent nous offre une meilleure réduction.','Négocier sur les critères et pas seulement sur le prix'],
+['F09',2,'Réunion','Collègue','Nous avons déjà essayé cela. Nous avons perdu notre temps.','Distinguer le passé et la proposition actuelle'],
+['F10',2,'Négociation','Partenaire','Je veux une réponse ferme aujourd’hui, sinon nous arrêtons la discussion.','Résister à une fausse urgence sans casser la relation'],
+['F11',3,'Réunion stratégique','Directeur','Vous proposez d’accélérer le projet, mais votre plan augmente aussi le risque opérationnel.','Proposer un compromis vérifiable'],
+['F12',3,'Client','Client sceptique','Vous parlez de qualité, mais nous avons déjà connu deux incidents avec votre équipe.','Reconnaître les incidents et proposer des garanties concrètes'],
+['F13',3,'Management','Responsable','Votre idée semble pertinente, mais pourquoi est-elle prioritaire alors que les ressources sont limitées ?','Justifier la priorité avec critères'],
+['F14',3,'Négociation','Acheteur','Si je fais cette concession, qu’êtes-vous prêt à abandonner en retour ?','Préserver l’échange réciproque'],
+['F15',3,'Réunion','Expert','Votre argument suppose que les utilisateurs changeront de comportement. Sur quelle preuve vous basez-vous ?','Distinguer hypothèse et preuve'],
+['F16',4,'Crise projet','Direction','Vous avez demandé plus de temps hier et plus de budget aujourd’hui. Pourquoi devrions-nous vous suivre ?','Répondre avec responsabilité et plan concret'],
+['F17',4,'Négociation','Partenaire exigeant','Je valide votre prix uniquement si vous garantissez une livraison plus rapide et un support renforcé.','Identifier les compromis irréalistes'],
+['F18',4,'Réunion','Manager','J’ai deux minutes. Pourquoi votre solution vaut-elle mieux que l’alternative déjà approuvée ?','Exprimer une différence décisive'],
+['F19',4,'Client','Client mécontent','Vous parlez de partenariat, mais votre contrat met tous les risques de notre côté.','Proposer un partage de risques'],
+['F20',4,'Décision','Direction','Vos données sont partielles et notre concurrent avance. Que décidez-vous maintenant ?','Proposer une décision réversible'],
+['F21',5,'Réunion surprise','Dirigeant','Votre recommandation repose sur une hypothèse fragile. On fait quoi ?','Formuler un prochain pas sûr'],
+['F22',5,'Négociation','Acheteur','Votre concession est insuffisante. Faites mieux.','Garder le cap et demander la contrepartie'],
+['F23',5,'Management','Manager','Vous n’avez pas répondu à ma question. Oui ou non ?','Clarifier sans évasion'],
+['F24',5,'Crise','Responsable','Le plan vient d’échouer. Quelle décision prenez-vous ?','Choisir une action de stabilisation'],
+['F25',5,'Client','Client','Pourquoi ne pas vous remplacer immédiatement ?','Répondre calmement avec faits et solution']
+];
+const ENGLISH=[
+['E01',1,'Team meeting','Manager','Your proposal is too expensive for an uncertain benefit.','Defend value without dismissing risk'],
+['E02',1,'Customer','Client','I do not see why we should trust your team.','Rebuild a basis for trust'],
+['E03',1,'Negotiation','Partner','Your delivery date is far too late.','Clarify constraints and offer an option'],
+['E04',1,'Meeting','Colleague','That idea will never work.','Ask for the specific concern'],
+['E05',1,'Management','Manager','Your analysis is not clear enough.','Reframe your core argument'],
+['E06',2,'Budget review','Finance director','We already have a cheaper solution. Why switch?','Explain meaningful differences in value'],
+['E07',2,'Management','Manager','What concrete outcomes can you guarantee?','Distinguish commitments from uncertainties'],
+['E08',2,'Customer','Buyer','Your competitor is giving us a better discount.','Negotiate on total value'],
+['E09',2,'Team meeting','Colleague','We tried this before and wasted months.','Address what has changed'],
+['E10',2,'Negotiation','Partner','I need a firm answer today or the deal is off.','Resist pressure while keeping options open'],
+['E11',3,'Strategy','Director','You want to move faster, but that also increases operational risk.','Offer a testable compromise'],
+['E12',3,'Customer','Skeptical client','You claim quality, but your team already caused two incidents.','Acknowledge issues and state safeguards'],
+['E13',3,'Management','Manager','Why should this be a priority when our resources are limited?','Justify prioritization'],
+['E14',3,'Negotiation','Buyer','If I make this concession, what will you give in return?','Protect reciprocal value'],
+['E15',3,'Meeting','Expert','You assume people will change behavior. What is the evidence?','Separate evidence from assumptions'],
+['E16',4,'Project crisis','Executive','You requested more time yesterday and more money today. Why should we trust this plan?','Own the problem and propose a measurable plan'],
+['E17',4,'Negotiation','Demanding buyer','I will accept your price only if you deliver faster and offer expanded support.','Make trade-offs explicit'],
+['E18',4,'Meeting','Manager','I have two minutes. Why is your option better than the one we approved?','State the decisive difference'],
+['E19',4,'Customer','Unhappy client','You say partnership, but your contract puts all the risks on us.','Offer fairer risk-sharing'],
+['E20',4,'Decision','Leadership','Your data is incomplete and competitors are moving. What do we decide now?','Propose a reversible decision'],
+['E21',5,'Surprise meeting','Executive','Your entire recommendation rests on a weak assumption. Now what?','Give a credible next action'],
+['E22',5,'Negotiation','Buyer','That concession is not enough. Do better.','Seek a reciprocal move'],
+['E23',5,'Management','Manager','You did not answer my question. Yes or no?','Respond directly while protecting nuance'],
+['E24',5,'Crisis','Leader','The plan just failed. What is your decision?','Select an immediate stabilizing step'],
+['E25',5,'Customer','Client','Why should we not replace you immediately?','Respond with accountability and action']
+];
+// V2.1: exercices de transfert supplémentaires, distincts des épreuves d'évaluation réservées.
+const MORE_FRENCH=[
+ ['F26',1,'Conflit client','Client','Votre service nous a déçus. Pourquoi devrions-nous continuer ?','Reconnaître le ressenti et proposer une vérification'],
+ ['F27',1,'Conflit personnel','Interlocuteur','Vous ne prenez jamais mon avis au sérieux.','Accueillir le désaccord et clarifier sans se défendre mécaniquement'],
+ ['F28',1,'Vente','Prospect','Je n’ai pas le temps pour votre solution.','Exprimer une valeur claire et demander une permission'],
+ ['F29',1,'Entretien','Recruteur','Vous manquez d’expérience dans ce domaine.','Répondre simplement avec un exemple transférable'],
+ ['F30',1,'Autorité','Responsable','Votre recommandation ne me convainc pas.','Demander le critère décisif'],
+ ['F31',2,'Négociation prix','Acheteur','Je ne paierai pas davantage que l’offre concurrente.','Comparer le périmètre et les risques'],
+ ['F32',2,'Conflit client','Client','Vous promettez de corriger le problème, mais nous avons déjà entendu cela.','Passer d’une promesse à une preuve vérifiable'],
+ ['F33',2,'Négociation','Partenaire','Cette concession est unilatérale.','Rendre les concessions réciproques'],
+ ['F34',2,'Conflit personnel','Proche','Chaque fois que nous discutons, vous changez de sujet.','Rester sur la préoccupation centrale'],
+ ['F35',2,'Management','Supérieur','Vous allez trop lentement.','Expliquer une contrainte sans se justifier excessivement'],
+ ['F36',3,'Conflit client','Client mécontent','Vous n’avez pas respecté l’accord initial et vous demandez maintenant un supplément.','Distinguer responsabilité et adaptation du périmètre'],
+ ['F37',3,'Vente','Prospect','Votre solution est intéressante, mais je n’ai aucune preuve qu’elle me servira.','Proposer un essai avec critères de succès'],
+ ['F38',3,'Conflit personnel','Interlocuteur','Vous demandez une faveur alors que vous avez refusé la mienne.','Reconnaître l’asymétrie et proposer un compromis'],
+ ['F39',3,'Décision','Direction','Les deux options comportent un risque. Pourquoi choisir la vôtre ?','Expliciter un arbitrage réversible'],
+ ['F40',3,'Entretien','Recruteur','Vous expliquez vos réussites, mais qu’avez-vous appris d’un échec ?','Répondre avec responsabilité et apprentissage'],
+ ['F41',4,'Conflit client','Client','Si vous ne reconnaissez pas votre tort maintenant, je publie cette histoire.','Désamorcer la menace sans céder à l’intimidation'],
+ ['F42',4,'Négociation','Acheteur','Je réduis le prix de 20 %, sinon j’appelle votre concurrent.','Préserver la relation et reformuler les paramètres'],
+ ['F43',4,'Autorité','Directeur','Votre plan a échoué deux fois. Pourquoi le retenter ?','Expliquer ce qui change et la condition d’arrêt'],
+ ['F44',4,'Conflit personnel','Interlocuteur','Vous vous croyez supérieur parce que vous contestez ma décision ?','Refuser l’attaque personnelle et revenir au sujet'],
+ ['F45',4,'Vente','Prospect pressé','Je vous donne dix secondes pour prouver que ce rendez-vous n’est pas une perte de temps.','Formuler une proposition concise et vérifiable'],
+ ['F46',5,'Négociation','Acheteur','Dernière offre. Vous acceptez ou non ?','Refuser une fausse urgence sans s’effacer'],
+ ['F47',5,'Conflit client','Client','Vous avez une phrase pour expliquer cette erreur ?','Assumer, stabiliser, proposer une action'],
+ ['F48',5,'Management','Direction','Vous choisissez qui : votre équipe ou le client ?','Refuser le faux dilemme et poser un critère'],
+ ['F49',5,'Conflit personnel','Interlocuteur','Vous n’avez rien à répondre ?','Commencer une réponse simple plutôt que chercher le parfait'],
+ ['F50',5,'Entretien','Recruteur','Pourquoi vous recruter maintenant ?','Faire valoir un apport concret sans surpromesse']
+];
+const MORE_ENGLISH=[
+ ['E26',1,'Client conflict','Customer','Your service disappointed us. Why should we continue?','Acknowledge the concern and propose a check'],
+ ['E27',1,'Personal disagreement','Partner','You never take my views seriously.','Clarify the concern without defensiveness'],
+ ['E28',1,'Sales','Prospect','I do not have time to look at your solution.','State value briefly and ask permission'],
+ ['E29',1,'Interview','Interviewer','You lack experience in this field.','Give one transferable example'],
+ ['E30',1,'Authority','Manager','I am not convinced by your recommendation.','Ask for the decisive criterion'],
+ ['E31',2,'Price negotiation','Buyer','I will not pay more than your competitor charges.','Compare scope and downside'],
+ ['E32',2,'Client conflict','Customer','You say you will fix it, but we have heard that before.','Replace promises with verifiable evidence'],
+ ['E33',2,'Negotiation','Partner','That concession is entirely one-sided.','Propose a reciprocal exchange'],
+ ['E34',2,'Personal disagreement','Friend','You keep changing the subject when we argue.','Stay with the central concern'],
+ ['E35',2,'Authority','Manager','You are moving too slowly.','Explain a constraint without making excuses'],
+ ['E36',3,'Client conflict','Customer','You broke our initial agreement and now ask for more money.','Separate responsibility from scope changes'],
+ ['E37',3,'Sales','Prospect','Interesting solution, but you have no proof it helps us.','Propose a measurable pilot'],
+ ['E38',3,'Personal disagreement','Partner','You ask me for help after refusing mine.','Acknowledge imbalance and negotiate'],
+ ['E39',3,'Decision','Executive','Both options are risky. Why should we choose yours?','Explain a reversible tradeoff'],
+ ['E40',3,'Interview','Interviewer','You mention successes. What did you learn from failure?','Show ownership and learning'],
+ ['E41',4,'Client conflict','Customer','Unless you admit wrongdoing now, I will publicize this.','De-escalate without accepting pressure'],
+ ['E42',4,'Negotiation','Buyer','Reduce the price by 20% or I call your competitor.','Reframe deal constraints'],
+ ['E43',4,'Authority','Executive','This plan failed twice. Why try again?','Explain changed evidence and stop criteria'],
+ ['E44',4,'Personal conflict','Partner','Do you think you are superior because you challenge me?','Set boundaries and return to the issue'],
+ ['E45',4,'Sales','Prospect','You have ten seconds to show me this is not a waste of time.','Make one testable value statement'],
+ ['E46',5,'Negotiation','Buyer','Final offer. Yes or no?','Avoid false urgency'],
+ ['E47',5,'Client conflict','Customer','Explain that mistake in one sentence.','Own the mistake and give the next action'],
+ ['E48',5,'Management','Leadership','Who do you choose: your team or the customer?','Challenge a false dilemma with a criterion'],
+ ['E49',5,'Personal disagreement','Partner','You have nothing to say?','Start with one clear sentence'],
+ ['E50',5,'Interview','Interviewer','Why should we hire you now?','State a concrete contribution']
+];
+FRENCH.push(...MORE_FRENCH);ENGLISH.push(...MORE_ENGLISH);
+const DAILY_TAGS=[
+ /./,/simple|phrase|mots|personal|interview/i,/clarif|précis|question/i,/décid|position|decis/i,/valeur|prix|value|price/i,/mots|phrase|écrit|oral/i,/./,
+ /prix|coût|price|budget/i,/question|précis|clarif/i,/concess|parten|negoti/i,/manager|direct|supérieur|authorit/i,/preuve|évidence|résultat|evidence/i,/refus|non|limite|reject/i,/./,
+ /attaque|conflit|critique|conflict/i,/urgent|ultimatum|dernier/i,/interruption|urgence|pression/i,/raison|argument|proposition/i,/échec|erreur|mistake/i,/question|conclus|prochain/i,/./,
+ /décid|incert|risk/i,/critique|conteste|objection/i,/négoci|concess|negoti/i,/clair|urgence|answer/i,/entretien|interview|anglais/i,/phrase|rapide|quick/i,/./,
+ /négoci|client|conflit|negoti/i,/./
+];
+
+const SIMS={FR:[
+{id:'SF1',title:'Renégociation de contrat',role:'Directrice achats',context:'Vous négociez le renouvellement d’un contrat de service. Le client souhaite réduire le prix sans diminuer les prestations.',goal:'Préserver la valeur et obtenir un accord équilibré.',turns:['Votre nouveau prix est injustifiable. Nous voulons 15 % de réduction.','Votre concurrent accepte déjà une baisse de 12 %. Qu’avez-vous de mieux ?','Je veux une garantie écrite et une remise aujourd’hui. Quel est votre dernier mot ?']},
+{id:'SF2',title:'Défense de projet',role:'Directeur opérationnel',context:'Vous proposez un projet d’amélioration alors que l’équipe est déjà sous pression.',goal:'Obtenir une expérimentation limitée.',turns:['Votre projet va perturber les opérations, nous n’avons pas le temps.','Même un pilote consommera des ressources. Qui assumera le risque ?','D’accord, mais je veux un critère d’arrêt très clair. Que proposez-vous ?']},
+{id:'SF3',title:'Négociation des priorités',role:'Responsable hiérarchique',context:'Votre manager demande une tâche urgente alors que vous gérez déjà deux priorités critiques.',goal:'Négocier un arbitrage sans perdre en crédibilité.',turns:['C’est urgent. Je veux ce dossier aujourd’hui, point final.','Tout est prioritaire dans cette équipe. Ne me dites pas que vous n’y arrivez pas.','Quelle solution concrète garantira un résultat acceptable pour demain ?']},
+{id:'SF4',title:'Objection en réunion',role:'Collègue expérimenté',context:'Vous présentez une nouvelle stratégie en réunion. Un collègue senior s’y oppose.',goal:'Défendre la stratégie tout en préservant la coopération.',turns:['Votre approche est trop théorique. Nous avons besoin de résultats concrets.','Même si nous testons, qui nous dit que vous ne sous-estimez pas les coûts ?','Vous avez une phrase pour convaincre le comité de vous donner une chance ?']}
+],EN:[
+{id:'SE1',title:'Contract renewal',role:'Procurement director',context:'You are renewing a services contract. The customer wants a lower price with no reduction in scope.',goal:'Protect value and reach a fair agreement.',turns:['Your new price is impossible to justify. We want a 15% discount.','Your competitor is already offering 12% off. What can you do better?','I want a written guarantee and a discount today. What is your final offer?']},
+{id:'SE2',title:'Project proposal',role:'Operations director',context:'You propose a process improvement while the team is already overloaded.',goal:'Secure approval for a limited pilot.',turns:['Your project will disrupt operations. We do not have time.','Even a pilot needs staff. Who will own the risk?','Fine, but I need a very clear stop condition. What is it?']},
+{id:'SE3',title:'Priority negotiation',role:'Direct manager',context:'Your manager assigns a new urgent task while you already own two critical priorities.',goal:'Negotiate a realistic trade-off with confidence.',turns:['This is urgent. I want it today. End of discussion.','Everything is a priority here. Do not tell me you cannot handle it.','What specific plan will deliver an acceptable result by tomorrow?']},
+{id:'SE4',title:'Strategic objection',role:'Senior colleague',context:'You present a new strategy in a meeting. A senior colleague strongly objects.',goal:'Defend the idea and preserve collaboration.',turns:['Your approach is too theoretical. We need practical outcomes.','Even with a test, how do we know you are not underestimating costs?','Give me one sentence that would persuade the committee to consider this.']}
+]};
+
+const WARMUPS={
+ FR:[
+  ['W01','Décision rapide','Manager','Nous n’avons pas les chiffres définitifs. Vous tranchez comment ?','Énoncez une décision provisoire et une condition de révision.'],
+  ['W02','L’essentiel','Client','Vous n’avez que dix secondes : votre bénéfice principal ?','Une idée centrale, pas une liste.'],
+  ['W03','Clarification','Collègue','Ce plan est risqué.','Posez une question pour identifier le risque concret.'],
+  ['W04','Accès aux mots','Acheteur','Votre prix est excessif.','Utilisez des mots simples pour défendre la valeur, sans chercher le mot parfait.'],
+  ['W05','Désaccord assertif','Manager','Je refuse votre proposition.','Exprimez un désaccord respectueux et une ouverture.'],
+  ['W06','Objection surprise','Client','Pourquoi vous et pas le concurrent ?','Nommez un critère différenciant vérifiable.'],
+  ['W07','Reformulation','Partenaire','Vous ne nous écoutez jamais.','Reformulez l’inquiétude et demandez confirmation.'],
+  ['W08','Négociation','Client','Je veux 20 % de réduction.','Demandez une contrepartie sans agressivité.']
+ ],
+ EN:[
+  ['W01','Quick decision','Manager','We still lack final figures. What do you decide?','State a provisional decision and what would change it.'],
+  ['W02','Main point','Client','You have ten seconds. What is your main benefit?','Give one core point, not a list.'],
+  ['W03','Clarification','Colleague','This plan is too risky.','Ask one specific clarifying question.'],
+  ['W04','Lexical access','Buyer','Your price is excessive.','Defend value in simple words, not the perfect words.'],
+  ['W05','Assertive dissent','Manager','I reject your proposal.','Disagree respectfully and suggest a next step.'],
+  ['W06','Surprise objection','Client','Why you rather than the competitor?','Name one defensible differentiator.'],
+  ['W07','Rephrase','Partner','You never listen to us.','Restate the concern and check your understanding.'],
+  ['W08','Negotiation','Customer','I want a 20% discount.','Ask for a fair trade-off.']
+ ]
+};
+const DAILY_FOCUS_FR=[
+ 'Établir le niveau de référence','Répondre sans chercher la phrase parfaite','Identifier la véritable objection','Prendre position en une phrase','Défendre la valeur sans surpromettre','Répondre avec des mots simples','Bilan semaine 1 : nouveaux défis',
+ 'Gérer une objection de prix','Demander une clarification sous pression','Négocier une contrepartie','Répondre à un supérieur','Argumenter avec un fait vérifiable','Savoir dire non sans escalade','Bilan semaine 2 : comparaison',
+ 'Désamorcer une attaque verbale','Faire face à un ultimatum','Répondre à une interruption','Choisir un argument central','Conserver son calme après une erreur','Conclure avec une question stratégique','Bilan semaine 3 : nouveaux défis',
+ 'Défendre une décision incertaine','Réagir à une critique inattendue','Négociation à trois objections','Maintenir la clarté à dix secondes','Argumenter en anglais si souhaité','Répondre avec assertivité en cinq secondes si prêt','Bilan semaine 4 : comparaison',
+ 'Simulation finale sur scénario inédit','Bilan 30 jours et prochaine priorité'
+];
+const DAILY_FOCUS_EN=[
+ 'Initial baseline','Respond without finding perfect wording','Find the real objection','Take a position in one sentence','Defend value without overpromising','Use simple words','Week 1: unseen baseline',
+ 'Handle price objections','Clarify under pressure','Negotiate a fair exchange','Respond to authority','Support a claim with evidence','Say no without escalating','Week 2: comparison',
+ 'Handle sharp criticism','Respond to ultimatums','Recover from interruption','Pick one decisive argument','Recover after a mistake','Close with a strategic question','Week 3: unseen baseline',
+ 'Decide under uncertainty','React to a surprise criticism','Three-turn negotiation','Stay clear within ten seconds','Switch language if useful','Five-second reply if ready','Week 4: comparison',
+ 'Final unseen simulation','Day 30 review and next focus'
+];
+function programDay(){return Math.min(30,1+(app.completedSessions||[]).length)}
+const EVAL_DAYS=[1,7,14,21,28,30];
+const EVAL_SETS={
+ FR:[
+  ['Échéancier','Client','Nous n’avons pas les mêmes contraintes de délai. Comment rendre votre proposition acceptable ?','Exposer une option équilibrée','Vos délais nous bloquent. Que proposez-vous concrètement ?'],
+  ['Budget','Responsable','Nous devons réduire les dépenses. Pourquoi maintenir votre prestation ?','Défendre une valeur vérifiable','Ce budget reste trop élevé. Quelle concession conditionnelle proposez-vous ?'],
+  ['Priorisation','Manager','Nous manquons de ressources. Pourquoi votre projet devrait-il passer en premier ?','Hiérarchiser et argumenter','Il manque toujours une preuve. Que décidez-vous avec les informations présentes ?'],
+  ['Confiance','Client','Votre équipe a commis une erreur. Qu’est-ce qui nous prouve que cela ne se reproduira pas ?','Responsabilité et garanties','Votre promesse ne suffit pas. Quel contrôle concret acceptez-vous ?'],
+  ['Conflit','Partenaire','Vous avez écarté notre avis dans votre décision. Comment avancer ?','Reconnaître et négocier une démarche','Votre réponse contourne notre objection. Que changez-vous maintenant ?'],
+  ['Décision','Direction','Votre plan pourrait échouer. Pourquoi devrions-nous le tenter ?','Choisir une étape réversible','Et si l’essai échoue dès la première semaine ? Quel est votre plan ?']
+ ],
+ EN:[
+  ['Timing','Customer','Our deadlines are very different. How can your proposal work for us?','Offer a practical compromise','Your timeline blocks our work. What will you change?'],
+  ['Budget','Manager','We need to cut spending. Why keep your service?','Defend demonstrable value','The price is still high. What conditional concession can you make?'],
+  ['Priority','Manager','We have limited resources. Why prioritize this project?','Explain priorities','You still have weak evidence. What decision can you make now?'],
+  ['Trust','Customer','Your team made a mistake. How can we trust you next time?','Show responsibility and safeguards','Promises are not enough. What real safeguard will you offer?'],
+  ['Conflict','Partner','You ignored our input when deciding. How do we move ahead?','Acknowledge and agree on a process','That does not address our concern. What will change?'],
+  ['Decision','Executive','Your plan could fail. Why should we try it?','Offer a reversible experiment','What if the trial fails in the first week? What will you do?']
+ ]
+};
+function assessmentSet(){const day=programDay(),idx=EVAL_DAYS.indexOf(day);return idx<0?null:{day,idx,id:'A'+day,details:EVAL_SETS[app.lang][idx]}}
+function completedForDay(day){return (app.completedSessions||[]).find(s=>s.day===day)}
+function sessionRows(){return !app.session?[]:app.records.filter(r=>r.source==='local'&&r.sessionId===app.session.id)}
+function sessionChecklist(){const rr=sessionRows();return {warmup:rr.some(r=>r.condition==='warmup'),objections:rr.filter(r=>r.mode==='timed_objection'&&r.condition==='timed').length,negotiation:rr.some(r=>r.mode==='negotiation'),assessment:rr.filter(r=>String(r.condition).startsWith('assessment_')).length}}
+function validateSession(){if(!app.session||app.session.completed)return toast('Démarre une séance avant de la valider.');if(app.completedSessions.length>=30)return toast('30 séances sont déjà validées. Programme terminé.');const progress=sessionChecklist();const missing=[];if(sessElapsed()<1200000)missing.push('20 minutes de séance');if(!progress.warmup)missing.push('1 échauffement');if(progress.objections<1)missing.push('1 objection chronométrée');if(!progress.negotiation)missing.push('1 tour de négociation');if(missing.length)return toast('Séance incomplète : '+missing.join(', '));const day=programDay();app.completedSessions.push({id:app.session.id,day,date:new Date().toISOString(),count:sessionRows().length,stressBefore:app.session.stressBefore??null,stressAfter:app.session.stressAfter??null});app.session.completed=true;app.session.runningSince=null;app.session.elapsedMs=1200000;save();renderHome();toast('Jour '+day+' validé : programme avancé à la séance suivante.');}
+function startAssessment(leg='baseline'){
+ const set=assessmentSet();if(!set){toast('Le bilan apparié est proposé aux jours 1, 7, 14, 21, 28 et 30.');return}
+ const [category,role,prompt,goal,pressure]=set.details;
+ const id=app.lang+'-'+set.id+'-'+leg.toUpperCase();
+ if(app.records.some(r=>r.challengeId===id&&r.source==='local')){toast('Cette épreuve est déjà enregistrée : elle n’est plus inédite.');return}
+ ongoing={responseMode:app.practiceMode,mode:'timed_objection',challenge:{id,level:currentLevel(),category,role,objection:leg==='baseline'?prompt:pressure,goal,context:'Bilan inédit '+set.id+' · Même thème, deux formulations différentes.'},lang:app.lang,level:currentLevel(),condition:'assessment_'+leg,assessmentPair:app.lang+'-'+set.id,deadline:leg==='baseline'?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill');
+}
+function suggestNextPhase(){if(!app.session){toast('Commence ta séance depuis le tableau de bord.');return}const phase=phaseIndex(sessElapsed()/1000);if(phase===1){prepareWarmup();return}if(phase===2){prepareDrill();return}if(phase===3){nav('negotiation');return}if(phase===4){nav('progress');return}nav('home');toast('Calibre ton niveau de stress puis démarre par un micro-exercice.');}
+
+function currentFocus(){
+ const rows=app.records.filter(r=>r.lang===app.lang&&r.source==='local'&&r.condition==='timed'&&r.mode==='timed_objection').slice(-5);
+ if(rows.length>=2){
+  if(rows.slice(-2).every(r=>r.blocked===true))return app.lang==='EN'?'Recovery: one clear sentence':'Débloquer : une phrase claire, sans perfectionnisme';
+  if(rows.some(r=>Number.isFinite(r.stress)&&r.stress>=8))return app.lang==='EN'?'Reduce pressure and find a starting phrase':'Réduire la pression et trouver une phrase de départ';
+  const scored=rows.filter(coachCompleted);if(scored.length>=2){const avg=k=>scored.reduce((v,r)=>v+r.coachScores[k],0)/scored.length;const k=['relevance','reasoning','strategy'].sort((a,b)=>avg(a)-avg(b))[0];if(avg(k)<3)return ({relevance:'Identifier et traiter la vraie objection',reasoning:'Position → raison → proposition',strategy:'Répondre avec assertivité et compromis'})[k]}
+ }
+ const i=programDay()-1;return (app.lang==='EN'?DAILY_FOCUS_EN:DAILY_FOCUS_FR)[i]
+}
+function pickWarmup(){const arr=WARMUPS[app.lang],used=new Set(app.records.filter(r=>r.condition==='warmup'&&r.lang===app.lang).slice(-3).map(r=>r.challengeId));const pool=arr.filter(x=>!used.has(x[0]));const v=(pool.length?pool:arr)[Math.floor(Math.random()*(pool.length||arr.length))];return {id:`${app.lang}-${v[0]}`,level:currentLevel(),category:v[1],role:v[2],objection:v[3],goal:v[4]}}
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>('R'+Date.now().toString(36)+Math.random().toString(36).slice(2,7));
+const bound=(n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
+const fmtTime=s=>{const n=Math.max(0,Math.ceil(s));return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`};
+const dateFmt=d=>{try{return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}catch{return '—'}};
+const defaults=()=>({version:4,lang:'FR',levels:{FR:1,EN:1},records:[],completedSessions:[],coachInbox:[],pending:null,session:null,programStart:null,practiceMode:'oral',oralCapture:'speech'});
+let app=defaults(),storageWorking=true,ongoing=null,negotiation=null,currentView='home',customNext=null,toastTimer=null,speechSession=null,draftSaveTimer=null;
+try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&typeof p==='object'){app={...defaults(),...p,levels:{...defaults().levels,...p.levels},records:Array.isArray(p.records)?p.records:[]}}}}catch(e){storageWorking=false}
+app.version=4;if(!Array.isArray(app.completedSessions))app.completedSessions=[];if(!Array.isArray(app.coachInbox))app.coachInbox=[];
+if(!['FR','EN'].includes(app.lang))app.lang='FR';
+if(!['oral','text'].includes(app.practiceMode))app.practiceMode='oral';if(!['speech','manual'].includes(app.oralCapture))app.oralCapture='speech';
+for(const l of ['FR','EN'])app.levels[l]=bound(app.levels[l]||1,1,5);
+if(app.session?.runningSince){/* Réouverture : ne pas compter comme entraînement le temps passé onglet fermé. */app.session.runningSince=null}
+if(app.pending&&app.pending.ongoing&&['ready','arming','active','stopping','review','saved'].includes(app.pending.ongoing.stage)){ongoing=app.pending.ongoing;negotiation=app.pending.negotiation||null;if(ongoing.stage==='active'){ongoing.stage='review';ongoing.condition='interrupted';ongoing.start=null;ongoing.firstInput=null;ongoing.endElapsed=null;ongoing.interrupted=true}else if(['arming','stopping'].includes(ongoing.stage)){ongoing.stage=ongoing.response?.trim()?'review':'ready';ongoing.condition='interrupted';ongoing.endElapsed=null;ongoing.interrupted=true}}
+const save=()=>{app.pending=ongoing?{ongoing:{...ongoing,start:null,end:null},negotiation}:null;try{localStorage.setItem(KEY,JSON.stringify(app));storageWorking=true}catch(e){storageWorking=false}const el=$('storage-status');if(el)el.textContent=storageWorking?'Stockage local actif':'Stockage indisponible';};
+function scheduleDraftSave(){if(draftSaveTimer!==null)return;draftSaveTimer=setTimeout(()=>{draftSaveTimer=null;save()},450)}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500)}
+function nav(name){if(!['home','drill','negotiation','progress','history','settings','guide'].includes(name))return;if(ongoing&&['active','arming','stopping'].includes(ongoing.stage)&&name!==(ongoing.mode==='negotiation'?'negotiation':'drill'))pauseActiveChallenge('navigation');currentView=name;document.querySelectorAll('.view').forEach(v=>v.classList.toggle('is-active',v.id===`view-${name}`));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$('crumb').textContent=({home:'TODAY',drill:'TIMED OBJECTIONS',negotiation:'NEGOTIATION',progress:'PROGRESS',history:'HISTORY',settings:'SETTINGS',guide:'GUIDE'})[name];renderCurrent();window.scrollTo({top:0,behavior:'instant'})}
+function renderCurrent(){renderHome();if(currentView==='drill')renderExercise('drill');if(currentView==='negotiation')renderExercise('negotiation');if(currentView==='progress')renderProgress();if(currentView==='history')renderHistory();if(currentView==='settings')renderSettings()}
+const currentLevel=()=>app.levels[app.lang];
+const sessElapsed=()=>app.session?Math.max(0,Math.min(1200000,(app.session.elapsedMs||0)+(app.session.runningSince?Date.now()-app.session.runningSince:0))):0;
+function startSession(){if(!app.programStart)app.programStart=new Date().toISOString();if(app.session&&!app.session.completed&&sessElapsed()>0){dialog('Redémarrer la session ?','Les exercices enregistrés resteront présents, mais cette séance ne sera pas validée.',()=>{app.session=null;startSession();prepareWarmup()});return false}app.session={id:uid(),date:new Date().toISOString(),elapsedMs:0,runningSince:Date.now(),completed:false,stressBefore:null,stressAfter:null};save();renderHome();toast('Séance lancée : commence par un échauffement oral.');return true}
+function toggleSession(){if(!app.session||app.session.completed){startSession();return}if(app.session.runningSince){app.session.elapsedMs=sessElapsed();app.session.runningSince=null}else if(sessElapsed()<1200000){app.session.runningSince=Date.now()}else{toast('20 minutes écoulées. Valide la séance après avoir terminé les modules.');return}save();renderHome()}
+function resetSession(){dialog('Recommencer la session ?','Les exercices déjà enregistrés resteront dans l’historique, mais la séance incomplète ne sera pas validée.',()=>{app.session=null;save();renderHome()})}
+
+function phaseIndex(elapsed){let cumulative=0;for(let i=0;i<PHASES.length;i++){cumulative+=PHASES[i][1]*60;if(elapsed<cumulative)return i}return PHASES.length-1}
+function renderHome(){const records=app.records.filter(r=>r.lang===app.lang&&r.source==='local'),known=records.filter(r=>r.blocked===true||r.blocked===false),blocks=known.filter(r=>r.blocked).length;
+$('stat-total').textContent=String(records.length);$('stat-block').textContent=known.length?`${Math.round(blocks/known.length*100)} %`:'—';$('stat-level').textContent=`${currentLevel()} / 5`;
+if($('program-day'))$('program-day').textContent=String(programDay()).padStart(2,'0');if($('program-completed'))$('program-completed').textContent=(app.completedSessions||[]).length+'/30 séance(s) validée(s)'+(app.completedSessions.length>=30?' · parcours terminé':'');
+if($('today-focus'))$('today-focus').textContent=currentFocus();if($('assessment-note'))$('assessment-note').textContent=assessmentSet()?'Bilan inédit recommandé : référence confortable + réponse sous pression, avec deux objections du même thème.':'Entraînement du jour : micro-défi, objection et négociation.';
+if($('today-mode'))$('today-mode').textContent=app.practiceMode==='oral'?(preferredOralCapture()==='speech'?'Oral + transcription':'Oral sans micro'):'Écrit';
+const el=sessElapsed()/1000;const finished=!!app.session?.completed;if(el>=1200&&app.session?.runningSince){app.session.elapsedMs=1200000;app.session.runningSince=null;save();toast('20 minutes atteintes : valide la séance après le bilan.');}
+$('session-clock').textContent=fmtTime(1200-el);$('session-progress').style.width=`${Math.min(100,el/1200*100)}%`;
+const active=!!app.session&&!finished&&el<1200;const running=active&&!!app.session.runningSince;$('session-status').textContent=finished?'VALIDÉE':el>=1200?'BILAN À VALIDER':running?'EN COURS':active?'EN PAUSE':'NON DÉMARRÉE';$('session-toggle').textContent=finished||!app.session?'▶ Commencer':el>=1200?'20 min atteintes':running?'Ⅱ Pause':'▶ Reprendre';$('session-phase').textContent=!app.session?'Entraînement guidé en cinq étapes.':finished?'Routine terminée. Pensez à exporter régulièrement vos résultats.':`Phase en cours : ${PHASES[phaseIndex(el)][0]}.`;
+const idx=app.session?phaseIndex(el):0;if($('session-checklist')){const ch=sessionChecklist();$('session-checklist').textContent=`Séance actuelle : échauffement ${ch.warmup?'✓':'○'} · objections ${ch.objections} · négociation ${ch.negotiation?'✓':'○'} · bilan ${ch.assessment} épreuve(s).`;}$('session-finish')?.toggleAttribute('disabled',!app.session||finished);if($('session-stress-before'))$('session-stress-before').value=String(app.session?.stressBefore??'');if($('session-stress-after'))$('session-stress-after').value=String(app.session?.stressAfter??'');if($('session-stress-before'))$('session-stress-before').value=String(app.session?.stressBefore??'');if($('session-stress-after'))$('session-stress-after').value=String(app.session?.stressAfter??'');$('phase-list').innerHTML=PHASES.map((p,i)=>`<div class="phase-row ${app.session&&i===idx&&!finished?'now':''} ${app.session&&(i<idx||finished)?'completed':''}"><span class="phase-idx">0${i+1}</span><div class="phase-main"><b>${p[0]}</b><small>${p[2]}</small></div><span class="phase-time">${p[1]} MIN</span></div>`).join('');
+}
+function pickChallenge(){if(customNext){const custom={id:'CUSTOM-'+uid(),level:currentLevel(),category:'Personnalisé',role:'Interlocuteur',objection:customNext,goal:'Formuler une réponse assertive et pertinente'};customNext=null;return custom}
+const source=app.lang==='FR'?FRENCH:ENGLISH;const all=source.filter(r=>r[1]===currentLevel());const lastIds=new Set(app.records.filter(r=>r.lang===app.lang&&r.mode==='timed_objection').slice(-Math.min(4,all.length-1)).map(r=>r.challengeId));const eligible=all.filter(r=>!lastIds.has(r[0]));const arr=eligible.length?eligible:all;const topic=DAILY_TAGS[programDay()-1]||/./;const relevant=arr.filter(r=>topic.test([r[2],r[5]].join(' ')));const candidates=relevant.length?relevant:arr;const row=candidates[Math.floor(Math.random()*candidates.length)];return {id:row[0],level:row[1],category:row[2],role:row[3],objection:row[4],goal:row[5]}}
+function prepareDrill(baseline=false){ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:pickChallenge(),lang:app.lang,level:currentLevel(),condition:baseline?'baseline':'timed',deadline:baseline?60:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill')}
+function prepareWarmup(){ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'timed_objection',challenge:pickWarmup(),lang:app.lang,level:currentLevel(),condition:'warmup',deadline:20,stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('drill')}
+function startNegotiation(id){const s=(SIMS[app.lang]||[]).find(x=>x.id===id)||SIMS[app.lang][0];negotiation={id:s.id,scenario:s,round:0,transcript:[]};prepareNegTurn()}
+function prepareNegTurn(){const s=negotiation?.scenario;if(!s)return;const turn=negotiation.round;const nextObjection=negotiation.customNext?.slice(0,2000)||s.turns[turn];negotiation.customNext=null;ongoing={captureMode:app.practiceMode==='text'?'text':preferredOralCapture(),responseMode:app.practiceMode,mode:'negotiation',condition:'timed',challenge:{id:`${s.id}-T${turn+1}`,level:currentLevel(),category:s.title,role:s.role,objection:nextObjection,goal:s.goal,context:s.context},lang:app.lang,level:currentLevel(),deadline:LEVELS[currentLevel()-1],stage:'ready',response:'',stress:null,ratings:{relevance:null,reasoning:null,strategy:null},blocked:'unknown',feedback:''};save();nav('negotiation')}
+function nextChallenge(){if(ongoing?.condition==='assessment_baseline'&&assessmentSet()){startAssessment('timed');return}if(ongoing?.mode==='negotiation'&&negotiation){if(negotiation.round<negotiation.scenario.turns.length-1){const text=$('next-neg-override')?.value?.trim();if(text&&text.length>2000){toast('Relance trop longue (2000 caractères maximum).');return}if(text)negotiation.customNext=text;negotiation.round++;prepareNegTurn()}else{ongoing=null;negotiation=null;save();renderExercise('negotiation');toast('Simulation de négociation terminée')}}else{prepareDrill()}}
+function timerMarkup(x){const elapsed=x.start? (x.end||performance.now())-x.start:0;const secs=Math.max(0,x.deadline-elapsed/1000);return `<div class="timer ${secs<=3?'danger':''}" id="challenge-clock">${fmtTime(secs)}</div><div class="timer-note" id="challenge-note">${secs<=0?'Délai dépassé. Vous pouvez terminer puis enregistrer.':'Le compte à rebours est actif.'}</div>`}
+function challengeCard(x,visible){return `<div class="challenge-shell"><div class="challenge-meta"><span>${esc(x.challenge.category)}</span><span>${esc(x.challenge.role)}</span><span>NIVEAU ${x.level} / 5</span><span>${x.deadline} SEC</span></div>${x.challenge.context?`<p class="small muted" style="margin-top:13px">${esc(x.challenge.context)}</p>`:''}<p class="small muted" style="margin-top:12px">Objectif : ${esc(x.challenge.goal)}</p>${visible?`<div class="challenge-quote">« ${esc(x.challenge.objection)} »</div>`:`<div class="notice" style="margin-top:12px">L'objection apparaît quand vous déclenchez le chronomètre, pour éviter de préparer la réponse à l'avance.</div>`}</div>`}
+// SpeechRecognition is optional and can use a remote vendor service. No raw audio is saved by Response Lab.
+function canRecognize(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition)}
+function preferredOralCapture(){return app.oralCapture==='manual'||!canRecognize()?'manual':'speech'}
+function captureOf(x){return x.responseMode==='text'?'text':x.captureMode||'manual'}
+function captureLabel(x){return captureOf(x)==='speech'?'ORAL · TRANSCRIPTION':captureOf(x)==='manual'?'ORAL · SANS MICRO':'ÉCRIT'}
+function micMessage(code){return ({'not-allowed':'Autorisation microphone refusée.','service-not-allowed':'Reconnaissance vocale bloquée par le navigateur.','audio-capture':'Aucun microphone utilisable détecté.','network':'Service de transcription inaccessible : vérifie ta connexion.','no-speech':'Aucune parole reconnue.','language-not-supported':'Langue non disponible pour la reconnaissance vocale.','aborted':'Reconnaissance interrompue.'})[code]||'Transcription interrompue par le navigateur.'}
+function stopSpeechCapture(){const ss=speechSession;if(!ss)return;speechSession=null;clearTimeout(ss.finalTimer);try{ss.rec.abort()}catch{}}
+function voiceUpdate(){if(!ongoing)return;const fin=$('voice-final'),partial=$('voice-interim'),status=$('voice-status');if(fin)fin.textContent=ongoing.response||'Le texte reconnu apparaîtra ici pendant que tu parles.';if(partial)partial.textContent=ongoing.interimTranscript||'';if(status)status.textContent=ongoing.speechStatus||'En attente du microphone…';}
+function startSpeechCapture(){const x=ongoing;if(!x||!['ready','active'].includes(x.stage)||captureOf(x)!=='speech')return;const Factory=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!Factory){x.captureMode='manual';app.oralCapture='manual';x.speechError='Reconnaissance indisponible dans ce navigateur.';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill');return}
+ stopSpeechCapture();let rec;try{rec=new Factory()}catch{rec=null}
+ if(!rec){x.captureMode='manual';app.oralCapture='manual';x.speechError='Initialisation du micro impossible.';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill');return}
+ const ss={rec,base:x.response||'',finishing:false,finalTimer:null};speechSession=ss;
+ rec.lang=x.lang==='EN'?'en-US':'fr-FR';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+ x.speechStatus='Activation du microphone…';x.speechError='';x.interimTranscript='';
+ if(x.stage==='ready'){x.stage='arming';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill')}
+ else voiceUpdate();
+ rec.onstart=()=>{if(speechSession!==ss||ongoing!==x)return;if(x.stage==='arming'){x.start=performance.now();x.stage='active';x.firstInput=null;x.firstInputMethod=null;}x.speechUsed=true;x.speechStatus='Micro actif · parle naturellement';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill')};
+ rec.onspeechstart=()=>{if(speechSession!==ss||ongoing!==x||x.stage!=='active'||x.firstInput!==null)return;x.firstInput=Math.max(0,performance.now()-x.start);x.firstInputMethod='speech-event';save();voiceUpdate()};
+ rec.onresult=e=>{if(speechSession!==ss||ongoing!==x||!['active','stopping'].includes(x.stage))return;
+  const finals=[],partials=[];for(let i=0;i<e.results.length;i++){const result=e.results[i];const word=result?.[0]?.transcript?.trim();if(!word)continue;(result.isFinal?finals:partials).push(word)}
+  const finalText=[ss.base,...finals].filter(Boolean).join(' ').trim();const current=[finalText,...partials].filter(Boolean).join(' ').trim();
+  if(!x.firstInput&&x.stage==='active'&&current){x.firstInput=Math.max(0,performance.now()-x.start);x.firstInputMethod='recognition-result'}
+  x.response=current;x.interimTranscript=partials.join(' ');x.transcriptSource='browser-speech';scheduleDraftSave();voiceUpdate();
+ };
+ rec.onerror=e=>{if(speechSession!==ss||ongoing!==x)return;const message=micMessage(e.error);x.speechError=message;x.speechStatus=message;if(x.stage==='arming'){speechSession=null;x.stage='ready';x.captureMode='manual';app.oralCapture='manual';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill');toast(message+' Passage au mode sans micro.');}else{save();voiceUpdate()}};
+ rec.onend=()=>{if(speechSession!==ss||ongoing!==x)return;clearTimeout(ss.finalTimer);speechSession=null;x.interimTranscript='';if(x.stage==='stopping'){finishSpeechReview();return}if(x.stage==='arming'){x.stage='ready';x.captureMode='manual';app.oralCapture='manual';x.speechError=x.speechError||'Le microphone ne s’est pas lancé.';}else if(x.stage==='active'){x.speechStatus=x.speechError||'Le micro s’est arrêté. Relance-le ou termine ta réponse.';}save();renderExercise(x.mode==='negotiation'?'negotiation':'drill')};
+ try{rec.start()}catch(e){if(speechSession===ss)speechSession=null;x.speechError='Impossible de lancer la reconnaissance vocale.';if(x.stage==='arming'){x.stage='ready';x.captureMode='manual';app.oralCapture='manual';}save();renderExercise(x.mode==='negotiation'?'negotiation':'drill');toast(x.speechError)}
+}
+function finishSpeechReview(){const x=ongoing;if(!x||x.stage!=='stopping')return;stopSpeechCapture();x.stage='review';x.interimTranscript='';save();renderExercise(x.mode==='negotiation'?'negotiation':'drill')}
+function pauseActiveChallenge(reason){const x=ongoing;if(!x||!['active','arming','stopping'].includes(x.stage))return;const started=Number.isFinite(x.start);stopSpeechCapture();x.interrupted=true;x.condition='interrupted';x.endElapsed=started?Math.max(0,performance.now()-x.start):null;x.end=null;x.stage=x.response?.trim()?'review':'ready';x.speechStatus='Exercice interrompu : aucun chronométrage comparable conservé.';x.interimTranscript='';save();}
+
