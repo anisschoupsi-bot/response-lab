@@ -1,4 +1,4 @@
-# Response Lab 2.4 — Guide pratique de l'entraînement oral
+# Response Lab 2.5 — Guide pratique de l'entraînement oral
 
 ## Ton objectif
 
@@ -12,9 +12,9 @@ Apprendre à répondre **oralement**, de manière pertinente, brève et assertiv
 
 **3. Évaluer le ressenti.** Indique ton stress (0–10, facultatif) et si tu as ressenti un blocage. Tu ne notes **pas** toi-même la pertinence, la logique et la persuasion. Enregistre la tentative.
 
-**4. Faire analyser.** Le bouton « Enregistrer et préparer l'analyse ChatGPT » copie normalement la fiche sur les navigateurs qui autorisent le presse-papiers ; sinon utilise « Copier la fiche pour ChatGPT ». Clique « Ouvrir ChatGPT » ou ouvre ta conversation avec ton **Master Prompt Ultimate v3**, et colle le texte. **Il n'y a pas de connexion directe entre l'application et ChatGPT.** Demande les trois notes et **une** correction concrète.
+**4. Faire analyser.** Clique « Enregistrer et télécharger pour ChatGPT ». Un fichier JSON ne contenant **que ton exercice** est téléchargé. Joins-le dans ta conversation avec ton **Master Prompt Ultimate v3**. Demande un fichier JSON d’évaluation contenant les trois notes et **une** correction concrète. **Il n’y a pas de connexion automatique entre l’application et ChatGPT.**
 
-**5. Importer.** Copie **uniquement le JSON** de ChatGPT et colle-le dans la zone « Importer l'évaluation IA » sous la tentative enregistrée (ou dans Historique). Aucun fichier à fabriquer. Les évaluations enrichissent l'ID existant sans créer une nouvelle tentative.
+**5. Importer.** Télécharge le fichier `.json` d’évaluation fourni par ChatGPT, puis utilise **Historique → Importer le fichier IA**. L’évaluation enrichit la tentative grâce à `attempt_id`, sans créer de doublon. Le collage direct reste une option secondaire.
 
 **6. Appliquer la correction.** Une fois le JSON importé, deux choix sont disponibles :
 
@@ -66,7 +66,7 @@ Sélectionne **EN · English** en haut à droite **avant de démarrer** un exerc
 
 ## Format ChatGPT et exemple
 
-Après avoir collé la fiche générée par l'application, demande : « Note uniquement le contenu observable de ma réponse ; retourne un objet JSON `cognitive-response-v1`, conserve exactement mon `attempt_id` et mon `challenge_id`, choisis une seule correction concrète et une `priority_skill` parmi les six compétences. »
+Après avoir joint le fichier téléchargé, demande : « Note uniquement le contenu observable de ma réponse ; retourne un objet JSON `cognitive-response-v1`, conserve exactement mon `attempt_id` et mon `challenge_id`, choisis une seule correction concrète et une `priority_skill` parmi les six compétences. »
 
 Exemple **illustratif** (les IDs sont ceux que tu obtiens réellement dans l'application) :
 
@@ -104,3 +104,15 @@ Dans **Progrès**, commence par sélectionner **oral** ou **écrit**. La section
 - Sur Windows, Chrome/Edge ; sur Android, Chrome compatible. Le support réel de la reconnaissance vocale et les autorisations dépendent du navigateur/appareil. Les tests automatisés simulent un moteur vocal ; ils ne garantissent pas le fonctionnement de ton micro.
 
 **L'application mesure la pratique et aide à corriger la communication orale ; ce n'est ni une thérapie, ni un dispositif médical, ni une mesure validée de la performance cognitive générale.**
+
+
+## 8. Échange avec ChatGPT sans copier-coller — v2.5
+
+1. Après l'enregistrement, l'application télécharge automatiquement un fichier `response-lab-exercice-<ID>.json`. Ce fichier ne contient **qu'une tentative** (objection, objectif, réponse transcrite et consignes) ; il ne contient pas tout l'historique.
+2. Dans cette conversation ChatGPT, **joins le fichier** téléchargé. Demande : « Analyse cet exercice en respectant les consignes incluses et rends-moi un fichier JSON importable dans Response Lab. »
+3. Télécharge le fichier JSON d'évaluation fourni dans la réponse de ChatGPT.
+4. Ouvre **Historique → Importer le fichier IA**, puis choisis le fichier d'évaluation. Les notes et le prochain exercice ciblé se rattachent à la tentative d'origine. Aucun code à copier.
+
+Si le téléchargement automatique a été bloqué, utilise **Historique → Fichier ChatGPT** pour le même exercice. Le bouton « Copier » existe toujours comme secours. Un fichier `response-lab-backup-...json` est une **sauvegarde complète**, pas un fichier destiné à ChatGPT. Ne joins pas une sauvegarde complète pour une évaluation individuelle.
+
+*Remarque : joindre le fichier à ChatGPT transmet le texte du défi au service ; seules les données envoyées volontairement le quittent. L'audio brut n'est pas inclus dans le fichier.*

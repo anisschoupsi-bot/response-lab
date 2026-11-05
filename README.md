@@ -1,4 +1,4 @@
-# Response Lab 2.4 — Entraînement cognitif oral par compétences
+# Response Lab 2.5 — Entraînement cognitif oral par compétences
 
 Site public : https://anisschoupsi-bot.github.io/response-lab/
 
@@ -47,3 +47,13 @@ python tests/test_deployed_assets.py
 Ces tests simulent la reconnaissance vocale. Ils ne valident ni le microphone réel, ni la qualité de transcription en conditions réelles, ni l'efficacité scientifique du programme sur 30 jours.
 
 Documents : [Guide](GUIDE_UTILISATION.md), [Programme des 30 séances](PROGRAMME_30_SEANCES.md), [Historique des changements](CHANGELOG.md).
+
+
+## 2.5 — Échange ChatGPT par fichiers (sans presse-papiers)
+
+1. À la fin d'un défi : **Enregistrer et télécharger pour ChatGPT**, ou dans **Historique → Fichier ChatGPT** en regard d'un exercice.
+2. Joindre **le fichier d'un seul exercice** (`response-lab-exercice-<id>.json`) à la conversation ChatGPT, et demander un fichier JSON d'évaluation. Les consignes et le modèle de sortie se trouvent dans le fichier.
+3. Télécharger le fichier d'évaluation fourni par ChatGPT.
+4. Dans **Historique → Importer le fichier IA**, choisir ce fichier. La note s'ajoute au même `attempt_id` ; la sauvegarde complète n'est pas utilisée pour cet échange.
+
+Format sortant `response-lab-coach-request-v1` : données minimales de **la tentative choisie seulement**, sans historique complet, sans fichier audio et sans API. Format de retour inchangé `cognitive-response-v1`, avec notes null si réponse manquante. La copie et le collage restent disponibles comme plan B. Ne jamais envoyer les sauvegardes complètes pour une simple évaluation.

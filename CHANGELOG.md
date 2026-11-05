@@ -1,3 +1,11 @@
+# 2.5 — Évaluation ChatGPT par fichiers
+
+- Télécharger une tentative unique `.json` à la fin de chaque exercice, ou depuis Historique.
+- Fichier de demande minimal avec objectif, objection et transcription, ainsi que le modèle de réponse du coach.
+- Import direct du fichier JSON d’évaluation dans l’historique, fusion sur `attempt_id` et compatibilité des anciennes sauvegardes.
+- Copier/coller conservé comme solution alternative.
+- Libellés et guide adaptés au nouveau parcours ; cache PWA renouvelé.
+
 # Journal des versions — Response Lab
 
 ## 2.4 · Compétences, profondeur pédagogique et transfert
