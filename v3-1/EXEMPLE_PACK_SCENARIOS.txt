@@ -1,0 +1,2 @@
+# titre | situation | élément décisif | fausse piste 1 | fausse piste 2 | nouvelle information
+Rendez-vous prioritaire|Un client demande un entretien urgent sans dire pourquoi.|Comprendre ce qui est urgent|Choisir une heure au hasard|Ignorer la demande|Le client évoque finalement une échéance réglementaire.

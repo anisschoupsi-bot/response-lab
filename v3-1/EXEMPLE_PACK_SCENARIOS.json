@@ -1,0 +1,25 @@
+{
+  "schema": "response-lab-scenario-pack-v1",
+  "scenarios": [
+    {
+      "id": "PACK-EXEMPLE-001",
+      "domain": "reasoning",
+      "fr": {
+        "title": "Arbitrage de devis",
+        "cue": "Deux devis sont comparés mais ne couvrent pas les mêmes prestations.",
+        "focus": "Comparer les prestations réellement incluses",
+        "distractor1": "Comparer seulement le prix final",
+        "distractor2": "Choisir au hasard",
+        "twist": "Le devis le moins cher exclut le support."
+      },
+      "en": {
+        "title": "Comparing quotes",
+        "cue": "Two quotes are compared but include different services.",
+        "focus": "Compare equivalent services",
+        "distractor1": "Only compare the final price",
+        "distractor2": "Choose randomly",
+        "twist": "The cheaper quote excludes support."
+      }
+    }
+  ]
+}
