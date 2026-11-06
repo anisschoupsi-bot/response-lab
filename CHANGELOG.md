@@ -1,3 +1,11 @@
+# 2.5.1 — Notes ChatGPT visibles après import
+
+- Afficher immédiatement, dans Historique, les trois notes du coach et un volet dépliable avec la correction et le prochain exercice.
+- Afficher dans Progrès toutes les évaluations (échauffements, réessais, transfert, objections) sans mélanger les échauffements avec les indicateurs des objections chronométrées comparables.
+- Après import d’un fichier, afficher un bilan permanent dans Historique ; préciser si l’évaluation est reliée, notée ou en attente d’association.
+- Ne pas confondre « réponse évaluée » et « niveau augmenté » : trois objections chronométrées distinctes restent nécessaires pour une promotion.
+- Aucune migration nécessaire : format des sauvegardes et données `localStorage` inchangés.
+
 # 2.5 — Évaluation ChatGPT par fichiers
 
 - Télécharger une tentative unique `.json` à la fin de chaque exercice, ou depuis Historique.

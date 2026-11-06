@@ -1,4 +1,4 @@
-# Response Lab 2.5 — Entraînement cognitif oral par compétences
+# Response Lab 2.5.1 — Entraînement cognitif oral par compétences
 
 Site public : https://anisschoupsi-bot.github.io/response-lab/
 
@@ -57,3 +57,8 @@ Documents : [Guide](GUIDE_UTILISATION.md), [Programme des 30 séances](PROGRAMME
 4. Dans **Historique → Importer le fichier IA**, choisir ce fichier. La note s'ajoute au même `attempt_id` ; la sauvegarde complète n'est pas utilisée pour cet échange.
 
 Format sortant `response-lab-coach-request-v1` : données minimales de **la tentative choisie seulement**, sans historique complet, sans fichier audio et sans API. Format de retour inchangé `cognitive-response-v1`, avec notes null si réponse manquante. La copie et le collage restent disponibles comme plan B. Ne jamais envoyer les sauvegardes complètes pour une simple évaluation.
+
+
+## Correctif 2.5.1 — Notes après import
+
+Après l’import du fichier d’évaluation, l’interface ouvre Historique et affiche les notes sur la tentative correspondante, avec sa correction dépliable. Dans Progrès, une liste « Mes notes ChatGPT · tous les types d’exercices » inclut les échauffements. Les moyennes de réactivité et de qualité des défis chronométrés comparables restent séparées. Si la tentative n’existe pas sur cet appareil, le retour est signalé comme non associé, et non comme une évaluation appliquée.

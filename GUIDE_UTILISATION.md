@@ -1,4 +1,4 @@
-# Response Lab 2.5 — Guide pratique de l'entraînement oral
+# Response Lab 2.5.1 — Guide pratique de l'entraînement oral
 
 ## Ton objectif
 
@@ -116,3 +116,10 @@ Dans **Progrès**, commence par sélectionner **oral** ou **écrit**. La section
 Si le téléchargement automatique a été bloqué, utilise **Historique → Fichier ChatGPT** pour le même exercice. Le bouton « Copier » existe toujours comme secours. Un fichier `response-lab-backup-...json` est une **sauvegarde complète**, pas un fichier destiné à ChatGPT. Ne joins pas une sauvegarde complète pour une évaluation individuelle.
 
 *Remarque : joindre le fichier à ChatGPT transmet le texte du défi au service ; seules les données envoyées volontairement le quittent. L'audio brut n'est pas inclus dans le fichier.*
+
+
+## Voir les notes après import (correctif 2.5.1)
+
+Après avoir choisi le fichier d’évaluation `cognitive-response-v1`, Response Lab ouvre automatiquement **Historique**. La ligne de l’exercice affiche **P /4 · R /4 · S /4** (pertinence, raisonnement, stratégie) ; clique sur **Voir la correction** pour lire le conseil et la micro-consigne. Le message d’import précise le nombre de tentatives reliées. Si aucune n’est reliée, vérifie que la tentative originale existe dans l’Historique de **cet appareil / navigateur** ; les historiques ne se synchronisent pas automatiquement. Les retours non associés sont dans la boîte d’attente avec le bouton **Associer**.
+
+Dans **Progrès**, la section **Mes notes ChatGPT · tous les types d’exercices** affiche aussi les échauffements et les exercices de consolidation. Les anciennes moyennes de qualité affichées pour les **objections chronométrées** n’incluent toujours pas les échauffements, car ces exercices ne sont pas comparables. Un seul fichier évalué n’augmente pas automatiquement le niveau : il faut trois exercices chronométrés distincts évalués favorablement selon les règles de progression.
