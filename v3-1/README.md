@@ -25,3 +25,8 @@ Aucun compte, aucune API payante, aucun `fetch` vers un serveur de traitement. L
 Tests : `node tests/test_engine.js`, `node tests/test_audio_workflow.js`, `python -m pytest tests/test_invariants.py -q`.
 
 Lire [`AUDIT_V3_1.md`](AUDIT_V3_1.md) pour les anomalies corrigées, limites et vérifications qui restent nécessaires sur appareils réels.
+
+
+## Correctif 3.1.1 — Bibliothèque bloquée au chargement
+
+La page GitHub Pages 3.1 chargeait un fichier JavaScript absent, `assets/app.js`, plutôt que les deux véritables modules `assets/app-core.js` et `assets/app-runtime.js`. Ce défaut empêchait l'initialisation et les 100 scénarios n'apparaissaient jamais. La page pointe maintenant vers les bons modules ; un chargeur de compatibilité `assets/app.js` débloque les anciennes pages mises en cache lors de leur prochaine connexion. Le service worker passe en network-first pour la navigation et garde le cache hors ligne pour les assets. Les données locales restent intactes.
