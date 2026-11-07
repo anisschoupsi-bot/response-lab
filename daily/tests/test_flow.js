@@ -33,7 +33,7 @@ const state=()=>api.getState().sessions[pack.session_id];
 const click=async(action,extra={})=>{handlers.click({target:{closest:()=>({disabled:false,dataset:{action,...extra}})}});for(let i=0;i<5;i++)await Promise.resolve();};
 const advance=async(ms)=>{clock+=ms;for(let k=0;k<5;k++){for(const fn of [...intervals.values()])fn();await Promise.resolve();}};
 const input=(id,value,extra={})=>{textDraft=value;handlers.input({target:{id,value,...extra,classList:{contains:cls=>cls==='note-field'&&extra.type==='note'}}});};
-const change=(id,value,extra={})=>handlers.change({target:{id,value,classList:{contains:cls=>cls==='grade-field'&&extra.type==='grade'},dataset:extra.dataset||{}}});
+const change=(id,value,extra={})=>handlers.change({target:{id,value,classList:{contains:cls=>(cls==='grade-field'&&extra.type==='grade')||(cls==='axis-grade'&&extra.type==='axis-grade')},dataset:extra.dataset||{}}});
 async function run(){
  let tests=0;const check=(cond,msg)=>{assert.ok(cond,msg);tests++};
  check(api.validatePack(pack).quiz.length===6,'6 QCM');
@@ -43,7 +43,7 @@ async function run(){
  assert.throws(()=>api.validatePack(duplicate),/double/);tests++;
  const invalid=JSON.parse(JSON.stringify(pack));invalid.quiz[0].correct_index=4;
  assert.throws(()=>api.validatePack(invalid),/QCM invalide/);tests++;
- check(app.innerHTML.includes('Importer ta séance'), 'home renders');
+ check(app.innerHTML.includes('Importer le fichier du jour'), 'home renders');
  await click('demo');
  check(state().cursor===0,'loaded');
  check(app.innerHTML.includes('Question de raisonnement rapide')&&!app.innerHTML.includes(pack.quiz[0].question),'quiz hidden until started');
@@ -57,10 +57,11 @@ async function run(){
  }
  check(state().cursor===6,'quiz finished');
  for(let k=0;k<2;k++){
-  await click('case-start');check(state().phase==='reading'&&app.innerHTML.includes('rédaction verrouillée'),'reading '+k);
-  await advance(50010);check(state().phase==='writing','writing unlocked '+k);
+  check(!app.innerHTML.includes(pack.cases[k].context),'case context concealed until timed start '+k);
+  await click('case-start');check(state().phase==='writing'&&state().timer?.seconds===110&&app.innerHTML.includes('case-answer')&&app.innerHTML.includes('case-context-pane')&&app.innerHTML.includes(pack.cases[k].context),'simultaneous reading and writing '+k);
+  check(app.innerHTML.includes('timer-dock')&&app.innerHTML.includes('time-number'),'large timer dock present '+k);
   input('case-answer','Ma réponse de cas numéro '+(k+1)+'.');
-  if(k===0)await advance(60010);else await click('case-finish');
+  if(k===0)await advance(110010);else await click('case-finish');
   check(state().phase==='review'&&state().answers[pack.cases[k].id].text.includes('Ma réponse'),'draft stored '+k);
   await click('next');
  }
@@ -78,19 +79,24 @@ async function run(){
   await click('next');
  }
  check(state().phase==='finished'&&state().cursor===11,'finished after 11');
- check(app.innerHTML.includes('Notes et corrections manuelles'),'manual notes screen');
- for(let n=0;n<11;n++)change('grade-'+n,String(n%5),{type:'grade',dataset:{id:[...pack.quiz,...pack.cases,...pack.oral][n].id}});
- check(Object.values(state().grades).filter(n=>Number.isInteger(n)).length===11,'all manual grades saved');
+ check(app.innerHTML.includes('Notes exercice par exercice'),'manual notes screen');
+ for(let n=0;n<11;n++)change('grade-'+n,String(n%6),{type:'grade',dataset:{id:[...pack.quiz,...pack.cases,...pack.oral][n].id}});
+ check(Object.values(state().grades).filter(n=>Number.isInteger(n)).length===11,'all 11 manual 0–5 grades saved');
+ for(const axis of ['analyse','raisonnement','decision','expression','adaptation'])change('axis-grade-'+axis,'5',{type:'axis-grade',dataset:{axis}});
+ check(Object.values(state().axes).filter(n=>n===5).length===5,'five axes scored 0–5');
  await click('export');
  check(downloads.length===1&&downloads[0].includes('RL-D-2026-11-07'),'file downloaded');
  const exported=JSON.parse(await lastBlob.text());
- check(exported.schema==='response-lab-daily-answers-v1','export schema');
+ check(exported.schema==='response-lab-daily-answers-v2','export schema');
  check(exported.answers.length===11,'all 11 answers exported');
+ check(exported.coach_axes?.length===5,'five coach axes in export');
+ check(exported.answers.some(x=>x.manual_grade_0_5===5),'grading scale 0 to 5 exported');
+ check(app.innerHTML.includes('Mes cinq repères d'), 'rubric shown');
  check(exported.answers.filter(x=>x.type==='oral').every(x=>x.transcript_raw.length>0),'transcripts exported');
  check(exported.answers.filter(x=>x.type==='quiz').length===6,'qcm answers exported');
  check(!app.innerHTML.includes('<script>alert(1)</script>'),'safely rendered');
  await click('home');check(state().phase==='finished','history preserved on home');
- await click('open',{id:pack.session_id});check(app.innerHTML.includes('Notes et corrections manuelles'),'history resume after completion');
+ await click('open',{id:pack.session_id});check(app.innerHTML.includes('Notes exercice par exercice'),'history resume after completion');
  console.log(`PASS ${tests} checks: import, validation, 6 timed QCM, 2 cases, 3 speech transcriptions, 11 manual grades, export, persistence.`);
 }
 run().catch(e=>{console.error(e);process.exitCode=1});

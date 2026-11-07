@@ -18,9 +18,9 @@ async function run(){let total=0;const check=(v,msg)=>{assert.ok(v,msg);total++}
  const h=harness();await h.click('demo');const st=h.session();
  await h.click('quiz-start');check(st.timer&&st.phase==='running','quiz clock running');await h.click('home');check(st.timer&&st.phase==='running','home does not erase timed quiz');await h.jump(45000);await h.click('open',{id:pack.session_id});check(st.phase==='review'&&st.answers['J1-Q1'].timedOut,'timed quiz resolves after return');
  for(let i=1;i<=6;i++){await h.click('next');if(i===6)break;await h.click('quiz-start');await h.click('quiz-choose',{index:String(pack.quiz[i].correct_index)})}
- check(st.cursor===6&&st.phase==='ready','two-stage case next');
- await h.click('case-start');check(st.phase==='reading','read timer');await h.click('home');await h.jump(125000);await h.click('open',{id:pack.session_id});check(st.phase==='review'&&st.answers['J1-E1'].timedOut,'expired read+write does not give extra time');
- await h.click('next');await h.click('case-start');await h.jump(50000);check(st.phase==='writing','second case writing');await h.jump(60000);check(st.phase==='review','second case ended');await h.click('next');
+ check(st.cursor===6&&st.phase==='ready','written case ready');
+ await h.click('case-start');check(st.phase==='writing'&&st.timer?.seconds===110,'unified 110-second case');await h.click('home');await h.jump(125000);await h.click('open',{id:pack.session_id});check(st.phase==='review'&&st.answers['J1-E1'].timedOut,'expired case does not give extra time');
+ await h.click('next');await h.click('case-start');await h.jump(50000);check(st.phase==='writing','second case still writing');await h.jump(60000);check(st.phase==='review','second case ended');await h.click('next');
  check(st.cursor===8&&st.phase==='ready','oral ready');
  await h.click('speech-start');check(st.phase==='arming'&&!st.timer,'no clock before mic actually starts');h.rec().deny();check(st.phase==='ready'&&!st.timer,'permission denied no clock');
  await h.click('speech-start');check(st.phase==='arming','can try again');h.rec().accept();check(st.phase==='speaking'&&!!st.timer,'starts only on mic event');

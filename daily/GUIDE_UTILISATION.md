@@ -1,22 +1,41 @@
-# Guide — Response Lab Daily
+# Guide d'utilisation — Response Lab Daily 2.0
 
-1. Ouvre **Séance quotidienne** et importe le fichier `.json` reçu du coach. Pour un premier essai, clique sur **Essayer la séance modèle**.
-2. Effectue les six QCM. Le compte à rebours de **40 s commence au clic** sur « Commencer la question ». Chaque sélection affiche aussitôt la bonne réponse et sa justification.
-3. Réalise les deux cas. Au clic sur « Afficher le contexte », le texte apparaît pour **50 s** de lecture. La zone de rédaction se déverrouille automatiquement ensuite pour **60 s**. Les brouillons sont sauvegardés pendant la saisie.
-4. Réalise les trois confrontations orales. Lis librement le contexte **avant** de démarrer. Clique sur **« Activer le micro et démarrer »** : le temps commence seulement lorsque le navigateur confirme la reconnaissance. Parle pendant **40 s**, relis le texte transcrit et corrige uniquement les erreurs de reconnaissance. Sans micro, utilise le mode secours (parole chronométrée, puis saisie manuelle).
-5. Une fois les 11 exercices achevés, clique sur **Télécharger le fichier de mes réponses**. Joins ce fichier au coach ChatGPT et demande une correction par identifiant d'exercice.
-6. Dans le bilan, entre **manuellement chaque note 0–4** et éventuellement le conseil du coach, sans collage de JSON. Les notes sont sauvegardées automatiquement.
+## Importer la séance du jour
 
-## Détail du fichier quotidien
+1. Ouvre `https://anisschoupsi-bot.github.io/response-lab/daily/`.
+2. Sous « Importer le fichier du jour », choisis le fichier JSON joint par ChatGPT. Il contient **6 QCM, 2 cas écrits et 3 confrontations orales**.
+3. Si tu n'as pas de fichier, « Essayer la séance modèle » charge un exemple. Tu peux aussi le télécharger depuis la page.
+4. Tes séances précédentes restent visibles sous « Mes séances ».
 
-Il doit avoir `schema: "response-lab-daily-session-v1"`, un identifiant `session_id`, `date` YYYY-MM-DD, `language: "FR"` ou `"EN"`, un `title` et :
+## 6 QCM · 40 secondes chacun
 
-- `quiz`: tableau de **6** objets contenant `id`, `skill`, `question`, `options` (4 choix), `correct_index` (de 0 à 3), `explanation`.
-- `cases`: tableau de **2** objets contenant `id`, `skill`, `title`, `context`, `task`.
-- `oral`: tableau de **3** objets contenant `id`, `skill`, `context`, `confrontation`.
+Clique sur « Commencer la question ». Le chronomètre apparaît **en haut à droite**. Après ton choix, la bonne réponse s'affiche immédiatement ; en cas d'erreur, la séance modèle explique précisément pourquoi l'option choisie ne convient pas. Après 40 secondes, la question expire et la correction s'affiche quand même.
 
-La bibliothèque journalière est extensible par fichiers, sans modification du code. Une réimportation du même `session_id` ouvre la séance enregistrée au lieu d'effacer les réponses.
+## 2 cas écrits · 110 secondes chacun
 
-## Précisions techniques
+Clique sur « Commencer le cas ». Le **contexte et le champ de réponse apparaissent au même instant**. Tu disposes de **110 secondes au total** pour comprendre et écrire, sans phase de lecture verrouillée. Le texte se sauvegarde pendant la saisie. Tu peux terminer avant le temps ou laisser le délai expirer ; la réponse disponible est alors conservée.
 
-La reconnaissance vocale dépend du navigateur ; son traitement peut être distant. En cas d'indisponibilité, l'application ne prétend pas que le mode manuel est une transcription automatique. L'audio brut n'est pas stocké. L'export conserve la transcription originale séparément de la transcription corrigée. Les résultats sont locaux à l'appareil et au navigateur ; ne vide pas son stockage sans avoir exporté tes réponses.
+## 3 confrontations orales · 40 secondes chacune
+
+Lis le contexte et la confrontation **avant** de lancer le chronomètre. Dans le menu, choisis l'accent qui correspond à ta voix (`English (US)`, `English (UK)` etc.) et vérifie ton micro avec « Tester la dictée (sans chronomètre) » si besoin. Ce test **ne consomme aucun temps d'exercice**.
+
+Clique ensuite sur « Activer le micro et démarrer ». Les 40 secondes **ne commencent qu'après** l'autorisation effective du service de reconnaissance ; la transcription s'affiche au fur et à mesure. Après la réponse, corrige uniquement les erreurs de transcription, pas tes arguments. En cas de coupure, utilise « Relancer le micro » (sans remettre le temps à zéro) ou le mode sans micro. Selon le navigateur, la reconnaissance peut nécessiter une connexion et envoyer de l'audio au service du navigateur.
+
+## Recevoir la correction
+
+À la fin des 11 exercices, clique sur « Exporter les 11 réponses » ; joins ce fichier JSON dans notre conversation ChatGPT. Demande une correction couvrant :
+
+- **QCM :** explications supplémentaires des erreurs et du raisonnement attendu ;
+- **Cas écrits :** correction rédigée, critique du raisonnement et posture ;
+- **Confrontations :** analyse des réponses spontanées et formulations de meilleure qualité ;
+- **Cinq repères notés sur 0–5 :** analyse, raisonnement, décision, réactivité/formulation, adaptation sous pression, avec 4 à 5 recommandations concrètes.
+
+Recopie ensuite ces cinq notes et les conseils dans l'application. Les notes exercice par exercice (0–5) sont disponibles dans la section repliable. **Aucune évaluation automatique du raisonnement libre ou de la prononciation n'est effectuée.**
+
+## Historique et sauvegarde
+
+La page d'accueil affiche les résultats passés et les tendances sur les 7/14/30 dernières séances au temps standard. Les notes sur l'ancienne échelle 0–4 sont visibles dans les anciennes séances sans entrer dans ces tendances.
+
+Utilise régulièrement « Sauvegarder toutes mes séances ». Pour changer d'appareil, transfère ce fichier JSON et utilise « Restaurer une sauvegarde ». Si une séance a été interrompue, clique sur « ↓ Réponses » en haut de la séance pour sauvegarder ce qui a été fait ; le fichier indique clairement qu'elle n'est pas terminée.
+
+Pour un aménagement de temps, choisis ×2 ou ×10 avant le démarrage. La durée ajustée sera conservée avec la séance et ne faussera pas les statistiques à temps standard.

@@ -21,7 +21,13 @@
         "Le nombre de personnes dans l’équipe"
       ],
       "correct_index": 1,
-      "explanation": "La date confirmée par le transporteur constitue la contrainte principale. Les autres éléments ne règlent pas le délai."
+      "explanation": "La date confirmée par le transporteur constitue la contrainte principale. Les autres éléments ne règlent pas le délai.",
+      "option_explanations": [
+        "L'emballage prêt n'avance pas la date de livraison : c'est le transporteur qui fixe ici la faisabilité.",
+        "C'est bien la contrainte déterminante : vérifier une alternative avant de promettre vendredi.",
+        "La réunion commerciale ne change pas la date confirmée par le transporteur.",
+        "La taille de l'équipe n'indique pas la capacité du transporteur à livrer vendredi."
+      ]
     },
     {
       "id": "J1-Q2",
@@ -34,7 +40,13 @@
         "La validation juridique n’a aucun impact"
       ],
       "correct_index": 2,
-      "explanation": "Les données sont insuffisantes pour identifier la cause. Une bonne analyse sépare ce qui est connu de ce qui reste à vérifier."
+      "explanation": "Les données sont insuffisantes pour identifier la cause. Une bonne analyse sépare ce qui est connu de ce qui reste à vérifier.",
+      "option_explanations": [
+        "C'est une attribution de responsabilité non étayée : on ne connaît pas l'avancement technique.",
+        "On ne peut pas déduire une impossibilité avec ces seules informations.",
+        "Exact : l'information technique manquante empêche d'identifier la cause du retard.",
+        "La validation juridique exige bien deux jours et peut peser sur le calendrier."
+      ]
     },
     {
       "id": "J1-Q3",
@@ -47,7 +59,13 @@
         "Commencer les deux en parallèle malgré l’impossibilité"
       ],
       "correct_index": 1,
-      "explanation": "Un arbitrage doit considérer dépendances, échéances et conséquences, pas seulement l’étiquette « urgent »."
+      "explanation": "Un arbitrage doit considérer dépendances, échéances et conséquences, pas seulement l’étiquette « urgent ».",
+      "option_explanations": [
+        "La durée d'une tâche ne suffit pas : son échéance et ses conséquences importent.",
+        "Exact : arbitrer suppose de comparer les contraintes et les risques.",
+        "Reporter toute décision ne clarifie ni priorités ni impacts.",
+        "Démarrer deux tâches incompatibles risque de multiplier les retards."
+      ]
     },
     {
       "id": "J1-Q4",
@@ -60,7 +78,13 @@
         "Annuler la discussion immédiatement"
       ],
       "correct_index": 2,
-      "explanation": "La nouvelle contrainte demande un changement de stratégie et une vérification des options possibles."
+      "explanation": "La nouvelle contrainte demande un changement de stratégie et une vérification des options possibles.",
+      "option_explanations": [
+        "Répéter le calendrier actuel ne traite pas la nouvelle exigence du client.",
+        "Promettre sans capacité vérifiée crée un risque de rupture de confiance.",
+        "Exact : envisager des alternatives avec leurs coûts et limites est plus crédible.",
+        "Rompre la discussion empêche de chercher une solution partielle réaliste."
+      ]
     },
     {
       "id": "J1-Q5",
@@ -73,7 +97,13 @@
         "« Alors débrouillez-vous. »"
       ],
       "correct_index": 2,
-      "explanation": "Demander une précision transforme un jugement global en point vérifiable et évite une escalade inutile."
+      "explanation": "Demander une précision transforme un jugement global en point vérifiable et évite une escalade inutile.",
+      "option_explanations": [
+        "Attaquer l'interlocuteur empêche de comprendre son objection.",
+        "Affirmer qu'il a tort ne fournit ni fait ni clarification.",
+        "Exact : une question ciblée permet d'identifier l'écart concret.",
+        "L'abandon agressif évite le raisonnement et aggrave le conflit."
+      ]
     },
     {
       "id": "J1-Q6",
@@ -86,7 +116,13 @@
         "Seul le budget est respecté"
       ],
       "correct_index": 1,
-      "explanation": "Il faut suivre simultanément les trois critères sans perdre la contrainte budgétaire."
+      "explanation": "Il faut suivre simultanément les trois critères sans perdre la contrainte budgétaire.",
+      "option_explanations": [
+        "La proposition dépasse le budget : les trois critères ne sont pas respectés.",
+        "Exact : délai et qualité sont respectés, mais le budget reste contraignant.",
+        "Deux critères sont satisfaits : tout rejeter ferait perdre une information utile.",
+        "Le budget n'est précisément pas respecté : ne confonds pas critères."
+      ]
     }
   ],
   "cases": [
@@ -110,19 +146,39 @@
       "id": "J1-O1",
       "skill": "clarification-et-reponse",
       "context": "Tu présentes une nouvelle méthode de travail à ton responsable. Il n’a pas expliqué son désaccord.",
-      "confrontation": "« Votre méthode ne me convainc pas. On a toujours fait autrement et je ne veux pas perdre de temps. »"
+      "confrontation": "« Votre méthode ne me convainc pas. On a toujours fait autrement et je ne veux pas perdre de temps. »",
+      "keywords": [
+        "méthode",
+        "temps",
+        "évaluation",
+        "pilotage"
+      ]
     },
     {
       "id": "J1-O2",
       "skill": "argumentation-sous-pression",
       "context": "Tu négocies une prestation. Ton prix a été construit à partir des besoins, mais ton interlocuteur n’a pas indiqué quel critère lui semble excessif.",
-      "confrontation": "« C’est beaucoup trop cher. Vous devez réduire le tarif de 20 % dès maintenant. »"
+      "confrontation": "« C’est beaucoup trop cher. Vous devez réduire le tarif de 20 % dès maintenant. »",
+      "keywords": [
+        "prix",
+        "réduction",
+        "20 %",
+        "besoins",
+        "coût"
+      ]
     },
     {
       "id": "J1-O3",
       "skill": "adaptation-et-gestion-du-stress",
       "context": "Tu as proposé de livrer lundi. Le client t’interrompt et annonce une contrainte nouvelle : il doit organiser un événement vendredi.",
-      "confrontation": "« Lundi, c’est trop tard. Je veux une solution crédible pour vendredi, sans promesse irréaliste. Qu’est-ce que vous proposez ? »"
+      "confrontation": "« Lundi, c’est trop tard. Je veux une solution crédible pour vendredi, sans promesse irréaliste. Qu’est-ce que vous proposez ? »",
+      "keywords": [
+        "lundi",
+        "vendredi",
+        "livraison",
+        "transport",
+        "risque"
+      ]
     }
   ]
 }

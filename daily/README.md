@@ -1,27 +1,47 @@
-# Response Lab Daily 1.0 — Séances quotidiennes par fichier
+# Response Lab Daily 2.0 — entraînement cognitif et verbal quotidien
 
-**Version distincte des anciennes v2.5.1 / v3.1.1.** Aucune suppression ni migration d'historique : clé locale `response-lab-daily-state-v1`.
+Application web installable (PWA) et utilisable gratuitement, sans clé d'API. **Chemin GitHub Pages prévu :** `/response-lab/daily/`. Le déploiement est distinct des anciennes versions v2.x et v3.x, mais la refonte remplace la version Daily 1.0 à cette adresse.
 
 ## Parcours convenu
 
-- Une séance `.json` à importer chaque jour. Format strict `response-lab-daily-session-v1` : **6 QCM + 2 cas écrits + 3 confrontations orales**.
-- QCM : **40 secondes** par question, une réponse, puis **correction immédiate** (ou expiration et correction).
-- Cas écrits : **50 secondes** de lecture (rédaction verrouillée), puis **60 secondes** pour rédiger une réponse / posture. Sauvegarde du texte pendant la saisie.
-- Oral : la confrontation est **visible avant** le début ; un bouton active le microphone et démarre les **40 secondes après activation réelle de la reconnaissance vocale**. Transcription en direct, texte brut conservé, correction manuelle possible après la réponse. Mode secours sans micro disponible.
-- À la fin des 11 exercices : **un seul export JSON des réponses** (`response-lab-daily-answers-v1`) à joindre dans ChatGPT pour une correction globale ; **11 notes 0–4 saisies manuellement dans l'application**, avec champs de conseils facultatifs. Aucune importation de fichier de correction requise.
-- Les QCM ont une exactitude calculée objectivement ; la notation de qualité 0–4 reste manuelle, pour éviter toute confusion.
+1. Importer chaque jour un fichier de session JSON (`response-lab-daily-session-v1`, conservé pour compatibilité).
+2. **Six QCM**, **40 s** chacun, correction immédiate ; les fichiers récents donnent une explication spécifique de chaque mauvais choix (`option_explanations`) en plus de l'explication générale.
+3. **Deux cas écrits**, **110 s par cas**, avec contexte et réponse **simultanément** à partir du démarrage : rien n'est dévoilé avant la mise en route, la réponse se sauvegarde à chaque saisie.
+4. **Trois confrontations orales**, contexte visible à l'avance. Le **40 s** démarre uniquement après le signal `SpeechRecognition.onstart` ; la transcription est affichée et conservée. Français et variantes d'anglais (`en-US`, `en-GB`, `en-AU`, `en-IN`) au choix. Un **test de dictée hors chronomètre** est disponible et des alternatives de reconnaissance peuvent être montrées lorsqu'elles existent. Il est possible de corriger les fautes de transcription après l'exercice ; texte brut et texte corrigé restent distincts.
+5. Exporter toutes les réponses dans un unique JSON (`response-lab-daily-answers-v2`) à joindre dans ChatGPT. La correction est effectuée **dans le chat**, sans moteur IA embarqué.
+6. Recopier **manuellement** dans l'application les **cinq repères** notés sur **0 à 5** (analyse, raisonnement, décision, formulation, adaptation), leurs recommandations et, si souhaité, les 11 notes détaillées sur 0–5. Les réponses QCM sont corrigées automatiquement et séparément.
 
-## Confidentialité et limites
+**Chronomètre :** grands chiffres persistants en **haut à droite** de l'écran, également sur mobile. Les délais de référence sont 40/110/40 secondes ; les aménagements ×2 et ×10 sont proposés avant chaque exercice pour l'accessibilité. Ces séances adaptées ne sont pas mélangées aux moyennes de performances à temps standard.
 
-- Séances, textes et notes dans `localStorage` de ce navigateur. **Aucune synchronisation**, et la suppression des données du navigateur efface l'historique. Exporter les réponses régulièrement. Un grand nombre de longues sessions peut saturer le quota local.
-- L'application elle-même fonctionne après mise en cache hors ligne. Toutefois, la **Web Speech API utilisée pour retranscrire automatiquement la parole n'est pas garantie hors ligne** et peut acheminer l'audio vers le fournisseur du navigateur. En cas d'échec, mode sans micro et transcription manuelle clairement identifiés.
-- L'horloge suit le temps réel, même si l'onglet n'est pas actif ; cela ne mesure pas la vitesse du raisonnement. Aucun diagnostic de stress ou de fluidité orale n'est effectué. Pas de stockage de l'audio brut.
-- La note 0–4 est saisie par l'utilisateur sur la base d'une correction externe ; le logiciel ne prétend pas analyser sémantiquement les réponses libres.
+## Historique et stockage
+
+- Historique dans « Mes séances » avec succès QCM, notes des cinq repères, et moyennes par repère sur les 7/14/30 dernières séances comparables ; « — » si aucune note réelle n'a été saisie.
+- Les cinq notes ne sont agrégées en note de séance que si elles sont **toutes** renseignées.
+- Stockage local `response-lab-daily-state-v2` ; au premier démarrage, l'ancienne clé `response-lab-daily-state-v1` est **copiée et migrée sans suppression de l'original**.
+- Les notes historiques **0–4 restent dans `legacyGrades`** : elles apparaissent dans le détail mais **ne sont jamais converties automatiquement** en 0–5 ni intégrées aux tendances.
+- Export de secours des réponses **même pour une séance incomplète** (champ `completed: false`).
+- « Sauvegarder toutes mes séances » produit un JSON complet (`response-lab-daily-backup-v2`) ; une restauration fusionne les séances sans écraser celles déjà présentes. Limite volontaire de 500 séances dans le navigateur : exporter/archiver avant saturation.
+- Pas de synchronisation entre navigateurs/appareils. Une suppression des données du navigateur peut effacer l'historique si aucune sauvegarde n'a été effectuée.
+
+## Limites honnêtes de la reconnaissance vocale
+
+La Web Speech API ne fonctionne pas sur tous les navigateurs et peut utiliser un service externe : même si **les transcriptions et notes sont conservées localement**, la promesse de transcription 100 % hors ligne n'est **pas** faite. Les accents configurables, les indices de vocabulaire `keywords` et les hypothèses alternatives visent une meilleure reconnaissance, sans la garantir. **La transcription n'évalue pas la prononciation.** Aucun audio brut n'est enregistré dans l'application Daily.
 
 ## Tests
 
-`python -m pytest tests/ -q` puis `python -m http.server 8765` pour l'interface sur `http://localhost:8765/`. Tests du navigateur avec Playwright si Chromium est installé.
+```bash
+node tests/test_flow.js
+node tests/test_failures.js
+node tests/test_migration_backup.js
+node tests/test_assets.js
+```
 
-## Ajout d'une nouvelle séance
+Les tests utilisent un navigateur simulé pour valider logique, stockage, minuteries et machine à états. Ils ne démontrent pas un fonctionnement physique du microphone, ni un rendu graphique validé sur téléphone. Teste manuellement sur Chrome Android et navigateurs de bureau avant de considérer la fonctionnalité vocale comme validée.
 
-Le fichier `seance_2026-11-07.json` est une séance réelle d'exemple. Pour le jour suivant, demander au coach : « Crée mon fichier quotidien Response Lab au schéma response-lab-daily-session-v1, avec 6 QCM, 2 cas écrits et 3 confrontations orales, sans reprendre les questions précédentes. »
+## Fichiers
+
+- `index.html`, `assets/styles.css`, `assets/app.js`, `sw.js` — interface, moteur, cache hors ligne.
+- `seance_2026-11-07.json` — séance de démonstration (6 QCM avec raisons des distracteurs, 2 cas, 3 oraux).
+- `PROMPT_GENERATION_SEANCE.md` — prompt pour fabriquer une nouvelle séance quotidienne.
+- `PROMPT_CORRECTION.md` — consignes pour une correction avec ChatGPT.
+- `AUDIT_V2.md` — défauts de la v1 et corrections apportées ; limitations restantes.
