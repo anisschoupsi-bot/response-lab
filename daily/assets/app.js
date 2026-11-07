@@ -1,5 +1,5 @@
 'use strict';
-/* Response Lab Daily 2.1: 110 s simultaneous written cases, configurable speech locale,
+/* Response Lab Daily 2.2 QA: 110 s simultaneous written cases, configurable speech locale,
    0–5 manual coaching, historic progress, recoverable sessions and preserved v1 data.
    Timers use wall-clock deadlines. SpeechRecognition depends on the browser and may use remote services. */
 (()=>{
@@ -11,11 +11,13 @@ const BACKUP_SCHEMA='response-lab-daily-backup-v2';
 const QUIZ_SECONDS=40, CASE_SECONDS=110, ORAL_SECONDS=40;
 const AXES=[['analyse','Compréhension et analyse'],['raisonnement','Qualité du raisonnement'],['decision','Prise de décision'],['expression','Réactivité et formulation'],['adaptation','Adaptation sous pression']];
 const LOCALES={FR:[['fr-FR','Français (France)'],['fr-CA','Français (Canada)']],EN:[['en-US','English (US)'],['en-GB','English (UK)'],['en-AU','English (Australia)'],['en-IN','English (India)']]};
+const ALL_LOCALES=[...LOCALES.FR,...LOCALES.EN];
 const MAX_BYTES=500000;
 const dom=document.getElementById('app');
 const status=document.getElementById('live-status');
 let db={version:2,activeId:null,sessions:{}};
 let ticker=null, speech=null, testSpeech=null, testTranscript='', speechStatus='', duplicateNotice='', pendingPack=null;
+let speechStopTimer=null, speechErrorTimer=null, speechAttempt=0;
 const e=t=>String(t??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const byId=id=>document.getElementById(id);
 const fmt=n=>`${Math.max(0,Math.ceil(n))} s`;
@@ -42,6 +44,40 @@ function validatePack(o){
  }
  return JSON.parse(JSON.stringify(o));
 }
+// Imported backups/localStorage are untrusted. Never interpolate raw record metadata into HTML.
+function sanitizeSavedContent(s){
+ const items=steps(s.pack),known=new Map(items.map(item=>[item.id,item]));
+ const saved=Object.create(null);
+ for(const [id,raw] of Object.entries(s.answers||{})){
+  const item=known.get(id);if(!item||!raw||typeof raw!=='object'||Array.isArray(raw))continue;
+  const a={id,kind:item.kind};
+  if(typeof raw.startedAt==='string')a.startedAt=raw.startedAt.slice(0,80);
+  if(typeof raw.finishedAt==='string')a.finishedAt=raw.finishedAt.slice(0,80);
+  a.elapsedSec=typeof raw.elapsedSec==='number'&&Number.isFinite(raw.elapsedSec)&&raw.elapsedSec>=0&&raw.elapsedSec<=1100?raw.elapsedSec:null;
+  a.timedOut=raw.timedOut===true;
+  if(item.kind==='quiz'){
+   a.selectedIndex=Number.isInteger(raw.selectedIndex)&&raw.selectedIndex>=0&&raw.selectedIndex<4?raw.selectedIndex:null;
+   a.correct=a.selectedIndex!==null&&a.selectedIndex===item.correct_index&&!a.timedOut;
+  }
+  for(const field of ['text','transcript','finalTranscript','editedTranscript','interim'])
+   if(typeof raw[field]==='string')a[field]=raw[field].slice(0,9000);
+  a.transcriptEdited=raw.transcriptEdited===true;
+  if(['manual','browser-speech'].includes(raw.capture))a.capture=raw.capture;
+  a.alternatives=Array.isArray(raw.alternatives)?raw.alternatives.filter(v=>typeof v==='string').slice(0,6).map(v=>v.slice(0,1000)):[];
+  a.stressReported=Number.isInteger(raw.stressReported)&&raw.stressReported>=0&&raw.stressReported<=10?raw.stressReported:null;
+  saved[id]=a;
+ }
+ s.answers=saved;
+ const gradeIds=new Set(items.map(i=>i.id));
+ s.grades=Object.fromEntries(Object.entries(s.grades||{}).filter(([id,n])=>gradeIds.has(id)&&Number.isInteger(n)&&n>=0&&n<=5));
+ s.legacyGrades=Object.fromEntries(Object.entries(s.legacyGrades||{}).filter(([id,n])=>gradeIds.has(id)&&Number.isInteger(n)&&n>=0&&n<=4));
+ s.coachNotes=Object.fromEntries(Object.entries(s.coachNotes||{}).filter(([id,v])=>gradeIds.has(id)&&typeof v==='string').map(([id,v])=>[id,v.slice(0,1800)]));
+ const axesKeys=new Set(AXES.map(([id])=>id));
+ s.axes=Object.fromEntries(Object.entries(s.axes||{}).filter(([id,n])=>axesKeys.has(id)&&Number.isInteger(n)&&n>=0&&n<=5));
+ s.axisNotes=Object.fromEntries(Object.entries(s.axisNotes||{}).filter(([id,v])=>axesKeys.has(id)&&typeof v==='string').map(([id,v])=>[id,v.slice(0,1200)]));
+ s.coachSummary=typeof s.coachSummary==='string'?s.coachSummary.slice(0,2500):'';
+ return s;
+}
 function adaptSession(s,legacy=false){
  if(!s||!s.pack)return null;
  validatePack(s.pack);
@@ -59,8 +95,18 @@ function adaptSession(s,legacy=false){
  if(!s.axisNotes||typeof s.axisNotes!=='object')s.axisNotes={};
  if(!s.coachSummary||typeof s.coachSummary!=='string')s.coachSummary='';
  if(![1,2,10].includes(s.timerMultiplier))s.timerMultiplier=1;
- if(!LOCALES[s.pack.language].some(([code])=>code===s.speechLocale))s.speechLocale=s.pack.language==='EN'?'en-US':'fr-FR';
- return s;
+ if(!ALL_LOCALES.some(([code])=>code===s.speechLocale))s.speechLocale=s.pack.language==='EN'?'en-US':'fr-FR';
+ // Restore invalid or corrupted session metadata without interpreting arbitrary values as valid states.
+ if(!Number.isInteger(s.cursor)||s.cursor<0||s.cursor>11)s.cursor=0;
+ const phases=['ready','running','reading','writing','arming','speaking','closing','review','finished'];
+ if(!phases.includes(s.phase))s.phase='ready';
+ if(s.timer && (!Number.isFinite(s.timer.endsAt)||!Number.isFinite(s.timer.startedAt)||
+    !Number.isFinite(s.timer.seconds)||s.timer.seconds<=0||s.timer.seconds>1100||
+    typeof s.timer.stepId!=='string'||s.timer.stepId!==steps(s.pack)[s.cursor]?.id))s.timer=null;
+ if(['running','writing','speaking'].includes(s.phase)&&!s.timer){s.phase='ready';s.recoveryNotice='Exercice interrompu : les réponses partielles ont été conservées.';}
+ if(s.cursor===11)s.phase='finished';
+ else if(s.phase==='finished'){s.phase='ready';s.recoveryNotice='Données de progression incohérentes : les réponses présentes restent conservées.';}
+ return sanitizeSavedContent(s);
 }
 function load(){
  let obj=null,legacy=false;
@@ -87,11 +133,80 @@ function commitState(next){
  try{localStorage.setItem(STORE,JSON.stringify(next));db=next;return true;}
  catch(err){notify('Réinitialisation ou restauration impossible : sauvegarde locale indisponible. Rien n’a été effacé.');console.error(err);return false;}
 }
-function freshSession(pack, previous=null){return {pack,cursor:0,phase:'ready',timer:null,answers:{},grades:{},coachNotes:{},axes:{},axisNotes:{},coachSummary:'',speechLocale:previous?.speechLocale&&LOCALES[pack.language].some(([code])=>code===previous.speechLocale)?previous.speechLocale:(pack.language==='EN'?'en-US':'fr-FR'),timerMultiplier:1,createdAt:stamp(),finishedAt:null};}
+function freshSession(pack, previous=null){return {pack,cursor:0,phase:'ready',timer:null,answers:{},grades:{},coachNotes:{},axes:{},axisNotes:{},coachSummary:'',speechLocale:previous?.speechLocale&&ALL_LOCALES.some(([code])=>code===previous.speechLocale)?previous.speechLocale:(pack.language==='EN'?'en-US':'fr-FR'),timerMultiplier:1,createdAt:stamp(),finishedAt:null};}
 function modeLocked(s){return s.cursor>0||s.phase!=='ready'||Object.values(s.answers||{}).some(r=>r?.startedAt||r?.timedOut||r?.selectedIndex!==undefined);}
 function backupSnapshot(sessions=db.sessions){return {schema:BACKUP_SCHEMA,exported_at:stamp(),version:2,sessions};}
 function exportSafetyCopy(label){downloadFile('Response_Lab_Sauvegarde_avant_'+label+'_'+new Date().toISOString().slice(0,10)+'.json',backupSnapshot());}
-function stopAllActivity(){if(speech)endSpeech(true);stopSpeechTest();clearTick();speechStatus='';duplicateNotice='';pendingPack=null;}
+function stopAllActivity(){
+ if(speech)endSpeech(true);
+ stopSpeechTest();clearTick();
+ if(speechStopTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechStopTimer);speechStopTimer=null;}
+ if(speechErrorTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechErrorTimer);speechErrorTimer=null;}
+ speechAttempt=0;testTranscript='';speechStatus='';duplicateNotice='';pendingPack=null;
+}
+// Never clear the entire origin: older Response Lab products share this GitHub Pages domain.
+function storedKeys(storage,prefix='response-lab-daily-'){
+ try{
+  if(!storage||typeof storage.length!=='number'||typeof storage.key!=='function')return [];
+  const keys=[];for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key?.startsWith(prefix))keys.push(key);}return keys;
+ }catch{return [];} // Private browsing and sandboxed pages may deny storage access.
+}
+function eraseOwnedStoredData(){
+ const failures=[];let session=null;
+ try{session=typeof sessionStorage==='undefined'?null:sessionStorage;}catch{}
+ for(const storage of [localStorage,session]){
+  for(const key of storedKeys(storage)){if(storage===localStorage&&key===STORE)continue;try{storage.removeItem(key);}catch(err){failures.push('stockage '+key);}}
+ }
+ // Keep a v2 empty tombstone, preventing deleted v1 sessions from being migrated again on reload.
+ return failures;
+}
+async function clearOwnedOfflineData(){
+ const warnings=[];
+ // Opaque origins (about:/data:) cannot use persistent CacheStorage or IndexedDB reliably.
+ if(['about:','data:'].includes(location.protocol))return ['cache indisponible sur cette origine temporaire'];
+ if(typeof caches!=='undefined'&&caches?.keys){
+  try{for(const key of await caches.keys())if(key.startsWith('response-lab-daily-'))await caches.delete(key)}
+  catch(err){warnings.push('cache hors ligne non effacé');}
+ }
+ if(typeof indexedDB!=='undefined'&&indexedDB?.databases){
+  try{const databases=await indexedDB.databases();
+   for(const entry of databases||[])if(entry?.name?.startsWith('response-lab-daily-')){
+    await new Promise((resolve,reject)=>{const req=indexedDB.deleteDatabase(entry.name);req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error||Error('IndexedDB'));req.onblocked=()=>reject(Error('IndexedDB verrouillé'));});
+   }
+  }catch(err){warnings.push('base IndexedDB locale non effacée');}
+ }
+ return warnings;
+}
+function confirmDeletion(primary,second,backupName){
+ if(!window.confirm(primary))return false;
+ try{exportSafetyCopy(backupName);}catch(err){notify('Suppression annulée : impossible de préparer la sauvegarde. '+err.message);return false;}
+ return window.confirm(second+' Vérifie la présence du fichier de sauvegarde avant de confirmer.');
+}
+function deleteSession(id){
+ const target=db.sessions[id];if(!target)return;
+ if(!confirmDeletion('SUPPRIMER cette séance et ses réponses ? Les autres séances seront conservées.',
+  'Confirmer la suppression définitive de la séance '+target.pack.date+' ?', 'suppression_session'))return;
+ const nextSessions=Object.assign(Object.create(null),db.sessions);delete nextSessions[id];
+ const next={...db,sessions:nextSessions,activeId:db.activeId===id?null:db.activeId};
+ if(!commitState(next))return;
+ stopAllActivity();render();notify('Séance supprimée : '+id+'. Les autres séances sont intactes.');
+}
+function deleteAllSessions(){
+ const total=Object.keys(db.sessions).length;
+ if(!total){notify('Aucune séance à supprimer.');return;}
+ if(!confirmDeletion('SUPPRIMER les '+total+' séances importées, toutes leurs réponses et notes ?',
+  'Confirmer la suppression de TOUTES les séances ?', 'suppression_toutes_sessions'))return;
+ if(!commitState({version:2,activeId:null,sessions:Object.create(null)}))return;
+ stopAllActivity();const warning=eraseOwnedStoredData();render();
+ notify('Toutes les séances ont été supprimées.'+(warning.length?' Nettoyage partiel : '+warning.join(', '):''));
+}
+async function resetApplication(){
+ if(!confirmDeletion('RÉINITIALISER complètement Response Lab Daily sur cet appareil ? Cela efface les séances, progrès, notes, réglages et cache hors ligne de CETTE application.',
+  'Dernière confirmation : réinitialiser toutes les données Response Lab Daily ?', 'reinitialisation_application'))return;
+ if(!commitState({version:2,activeId:null,sessions:Object.create(null)}))return;
+ stopAllActivity();const warnings=[...eraseOwnedStoredData(),...await clearOwnedOfflineData()];render();
+ notify('Response Lab Daily a été réinitialisée.'+(warnings.length?' Attention : '+warnings.join(', ')+'.':''));
+}
 function restartSession(){
  const s=active();if(!s)return;
  if(!window.confirm('Recommencer cette séance ? Toutes ses réponses, ses notes et son avancement seront effacés. Une sauvegarde complète sera téléchargée avant la remise à zéro.'))return;
@@ -162,7 +277,7 @@ function expire(){
  stopTimer();
 }
 function chooseQuiz(index){
- const s=active(),item=s&&current(s);if(!s||item?.kind!=='quiz'||s.phase!=='running'||!s.timer)return;
+ const s=active(),item=s&&current(s);if(!s||item?.kind!=='quiz'||s.phase!=='running'||!s.timer||!Number.isInteger(index)||index<0||index>3)return;
  if(timeRemaining(s)<=0){expire();return;}
  const r=result(s,item);r.selectedIndex=index;r.correct=index===item.correct_index;r.timedOut=false;r.elapsedSec=Math.round(elapsed(s)*10)/10;stopTimer();s.phase='review';save();render();notify(r.correct?'Bonne réponse.':'Correction disponible.');
 }
@@ -179,67 +294,138 @@ function finishOral(timeout=false){const s=active(),item=s&&current(s);if(!s||it
 }
 function finalizeOral(s,item){if(active()!==s||current(s)?.id!==item.id)return;
  s.phase='review';s.timer=null;save();render();notify('Réponse orale enregistrée en texte. Vérifie la transcription avant de continuer.');}
-function next(){const s=active();if(!s||s.phase!=='review')return;endSpeech(true);speechStatus='';s.cursor+=1;s.timer=null;s.phase=s.cursor>=11?'finished':'ready';if(s.cursor>=11)s.finishedAt=stamp();save();render();}
+function next(){const s=active();if(!s||s.phase!=='review')return;endSpeech(true);speechStatus='';speechAttempt=0;s.cursor+=1;s.timer=null;s.phase=s.cursor>=11?'finished':'ready';if(s.cursor>=11)s.finishedAt=stamp();save();render();}
 function saveEditedTranscript(text){const s=active(),item=s&&current(s);if(!s||item?.kind!=='oral'||s.phase!=='review')return;
  const r=result(s,item);r.editedTranscript=String(text).slice(0,9000);r.transcriptEdited=r.editedTranscript.trim()!==String(r.transcript||'').trim();save();}
+function speechErrorMessage(code){
+ const messages={
+  'phrases-not-supported':'Ce moteur vocal ne prend pas en charge les indices de vocabulaire. Nouvel essai sans option expérimentale, puis mode sans micro si nécessaire.',
+  'language-not-supported':'Cette langue de dictée n’est pas prise en charge ici. Choisis une autre variante française ou anglaise et réessaie.',
+  'no-speech':'Aucune parole détectée. Vérifie le micro, parle plus près et relance la dictée.',
+  'audio-capture':'Aucun son reçu. Vérifie le micro branché, son accès et le périphérique sélectionné dans le navigateur.',
+  'not-allowed':'Accès refusé. Autorise le microphone dans les permissions du site, puis relance ; sinon utilise le mode sans micro.',
+  'service-not-allowed':'Le navigateur interdit ce service de transcription. Essaie Chrome/Edge compatible ou le mode sans micro.',
+  'network':'Service vocal inaccessible. Vérifie Internet ou utilise le mode sans micro : la dictée peut dépendre d’un fournisseur distant.',
+  'aborted':'La dictée a été interrompue. Réessaie si tu ne l’as pas annulée, ou continue sans micro.',
+  'language-unavailable':'Pack de langue indisponible. Choisis un autre accent ou utilise le mode sans micro.'
+ };
+ return messages[code]||'Erreur de reconnaissance ('+code+'). Vérifie les permissions, la langue et le navigateur, ou passe en mode sans micro.';
+}
+function microphoneWarning(){
+ if(window.isSecureContext===false && location.protocol==='http:' && !['localhost','127.0.0.1'].includes(location.hostname))return 'Le microphone nécessite un contexte sécurisé HTTPS ou localhost. Ouvre le site sur GitHub Pages.';
+ // file:// may be permitted by some browsers, but its reliability is not guaranteed.
+ return '';
+}
 function prepareSpeechTest(){
  const s=active(),item=s&&current(s);
  if(!s||item?.kind!=='oral'||s.phase!=='ready'||testSpeech||speech)return;
+ const warning=microphoneWarning();if(warning){speechStatus=warning;render();return;}
  const Factory=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!Factory){speechStatus='Essai indisponible : ce navigateur ne prend pas en charge la transcription. Le mode manuel reste possible.';render();return;}
+ if(!Factory){speechStatus='Test indisponible : reconnaissance vocale non prise en charge ici. Mode sans micro disponible.';render();return;}
  let rec;
  try{rec=new Factory();rec.lang=s.speechLocale;rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=2;}
  catch(err){speechStatus='Impossible de préparer le test : '+String(err?.message||err);render();return;}
- testSpeech=rec;testTranscript='';speechStatus='Test de dictée : autorise le microphone puis dis une courte phrase.';render();
- rec.onstart=()=>{if(testSpeech!==rec)return;speechStatus='Test micro actif · dis une phrase dans la langue choisie.';render();};
- rec.onresult=event=>{if(testSpeech!==rec)return;const values=[];for(let i=0;i<event.results.length;i++){const r=event.results[i];if(r?.[0]?.transcript)values.push(r[0].transcript.trim());}testTranscript=values.join(' ').slice(0,500);speechStatus=testTranscript?'Test reconnu : '+testTranscript:'En attente de la phrase de test…';render();};
- rec.onerror=event=>{if(testSpeech!==rec)return;testSpeech=null;speechStatus='Échec du test de dictée ('+String(event?.error||'inconnu')+'). Réessaie, ou choisis le mode sans micro.';render();};
- rec.onend=()=>{if(testSpeech!==rec)return;testSpeech=null;speechStatus=testTranscript?'Test terminé. Vérifie la transcription avant de lancer les 40 secondes.':'Test terminé sans texte reconnu : vérifie le microphone et la langue.';render();};
- try{rec.start();}catch(err){testSpeech=null;speechStatus='Test du microphone impossible : '+String(err?.message||err);render();}
+ testSpeech=rec;testTranscript='';speechStatus='Test de dictée : autorise le microphone et dis une courte phrase.';render();
+ rec.onstart=()=>{if(testSpeech!==rec)return;speechStatus='Test micro actif : parle dans la langue sélectionnée.';render();};
+ rec.onresult=event=>{if(testSpeech!==rec)return;const values=[];for(let i=0;i<event.results.length;i++){
+  const r=event.results[i];if(r?.[0]?.transcript)values.push(r[0].transcript.trim());
+ }testTranscript=values.join(' ').slice(0,500);speechStatus=testTranscript?'Test reconnu : '+testTranscript:'En attente de paroles…';render();};
+ rec.onerror=event=>{if(testSpeech!==rec)return;testSpeech=null;speechStatus=speechErrorMessage(String(event?.error||'unknown'));render();};
+ rec.onend=()=>{if(testSpeech!==rec)return;testSpeech=null;speechStatus=testTranscript?'Test terminé. Vérifie la transcription.':'Test terminé sans texte ; réessaie ou utilise le mode sans micro.';render();};
+ try{rec.start();}catch(err){testSpeech=null;speechStatus='Test impossible : '+String(err?.message||err);render();}
 }
-function prepareSpeech(restart=false){
- const s=active(),item=s&&current(s);if(!s||item?.kind!=='oral'||testSpeech||(!restart&&s.phase!=='ready')||(restart&&(s.phase!=='speaking'||!!speech||timeRemaining(s)<=0)))return;
+function prepareSpeech(restart=false,recovery=false){
+ const s=active(),item=s&&current(s);
+ if(!s||item?.kind!=='oral'||testSpeech||speech||(!restart&&s.phase!=='ready')||(restart&&(s.phase!=='speaking'||timeRemaining(s)<=0)))return;
+ const warning=microphoneWarning();if(warning){speechStatus=warning;render();return;}
  const Factory=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!Factory){speechStatus='La reconnaissance vocale n’est pas disponible dans ce navigateur. Utilise le mode sans micro.';render();return;}
- let rec;try{rec=new Factory()}catch{speechStatus='Impossible de préparer la reconnaissance vocale.';render();return;}
- if(speech)endSpeech(true);
- const sid=s.pack.session_id,itemId=item.id;
- const record=result(s,item);const capture={rec,sid,itemId,started:false,closing:false,onDone:null,base:restart?(record.finalTranscript||record.transcript||''):'',version:0};speech=capture;
- if(!restart)s.phase='arming';speechStatus=restart?'Reconnexion du microphone en cours…':'Autorisation du microphone en cours…';save();render();
- rec.lang=s.speechLocale||(s.pack.language==='EN'?'en-US':'fr-FR');rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=3;
- try{if('phrases' in rec&&window.SpeechRecognitionPhrase&&Array.isArray(item.keywords)){rec.phrases=item.keywords.slice(0,15).filter(k=>typeof k==='string').map(k=>new window.SpeechRecognitionPhrase(k,3));}}catch(err){console.warn('Biais lexical non pris en charge',err);}
+ if(!Factory){speechStatus='La reconnaissance vocale n’est pas disponible sur ce navigateur. Utilise le mode sans micro.';render();return;}
+ let rec;try{rec=new Factory()}catch{speechStatus='Impossible de préparer la dictée : essaie un navigateur compatible.';render();return;}
+ const itemId=item.id,record=result(s,item);
+ const capture={rec,itemId,started:false,closing:false,onDone:null,base:restart?(record.transcript||record.finalTranscript||''):'',error:null,recovery};
+ speech=capture;if(!restart)s.phase='arming';
+ speechStatus=recovery?'Tentative automatique sans option expérimentale…':restart?'Relance du micro sans remettre le chrono à zéro…':'Autorisation du microphone en cours…';
+ save();render();
+ rec.lang=s.speechLocale|| (s.pack.language==='EN'?'en-US':'fr-FR');
+ rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=2;
+ // No recognition.phrases, grammars, or processLocally. These experimental options can reject start() asynchronously.
  rec.onstart=()=>{if(speech!==capture||active()!==s||current(s)?.id!==itemId)return;
-  capture.started=true;record.capture='browser-speech';if(!restart)record.startedAt=stamp();record.transcript=record.transcript||'';speechStatus='Micro actif · tes paroles s’écrivent automatiquement';if(restart){save();render();}else beginTimed(s,'speaking',ORAL_SECONDS);};
+  capture.started=true;record.capture='browser-speech';if(!restart)record.startedAt=stamp();
+  speechStatus='Micro actif · la dictée commence';
+  if(restart){save();render();}else beginTimed(s,'speaking',ORAL_SECONDS);
+ };
  rec.onresult=ev=>{if(speech!==capture||active()!==s||current(s)?.id!==itemId)return;
   const finals=[],parts=[];
-  for(let i=0;i<ev.results.length;i++){const piece=ev.results[i]?.[0]?.transcript?.trim();if(!piece)continue;(ev.results[i].isFinal?finals:parts).push(piece);}
-  record.transcript=[capture.base,...finals,...parts].filter(Boolean).join(' ').slice(0,9000);record.finalTranscript=[capture.base,...finals].filter(Boolean).join(' ').slice(0,9000);
+  for(let i=0;i<ev.results.length;i++){
+   const piece=ev.results[i]?.[0]?.transcript?.trim();if(!piece)continue;
+   (ev.results[i].isFinal?finals:parts).push(piece);
+  }
+  record.transcript=[capture.base,...finals,...parts].filter(Boolean).join(' ').slice(0,9000);
+  record.finalTranscript=[capture.base,...finals].filter(Boolean).join(' ').slice(0,9000);
   record.interim=parts.join(' ');record.alternatives=[];
-  for(let j=0;j<ev.results.length;j++){const entry=ev.results[j];if(!entry||entry.length<2)continue;for(let k=1;k<Math.min(entry.length,3);k++){const alt=entry[k]?.transcript?.trim();if(alt&&!record.alternatives.includes(alt))record.alternatives.push(alt);}}record.alternatives=record.alternatives.slice(0,6);save();const el=byId('live-transcript');if(el)el.textContent=record.transcript||'Transcription en cours…';
+  for(let j=0;j<ev.results.length;j++){const entry=ev.results[j];if(!entry||entry.length<2)continue;
+   for(let k=1;k<Math.min(entry.length,3);k++){const alt=entry[k]?.transcript?.trim();if(alt&&!record.alternatives.includes(alt))record.alternatives.push(alt);}
+  }record.alternatives=record.alternatives.slice(0,6);
+  save();const el=byId('live-transcript');if(el)el.textContent=record.transcript||'Transcription en cours…';
  };
- rec.onerror=ev=>{if(speech!==capture)return;const name=String(ev?.error||'unknown');speechStatus=`Reconnaissance interrompue (${name}). ${capture.started?'Tu peux poursuivre sans micro.':'Choisis le mode sans micro.'}`;
-  if(!capture.started){speech=null;if(!restart)s.phase='ready';save();render();}else{save();render();}
+ rec.onerror=ev=>{if(speech!==capture)return;
+  capture.error=String(ev?.error||'unknown');
+  speechStatus=speechErrorMessage(capture.error);
+  if(!capture.started&&!restart){s.phase='ready';save();}
+  // Some implementations omit onend after an early asynchronous error; unblock the UI.
+  if(speechErrorTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechErrorTimer);speechErrorTimer=null;}
+  speechErrorTimer=setTimeout(()=>{speechErrorTimer=null;if(speech===capture&&!capture.closing)rec.onend?.();},1200);
+  // Wait for onend before retrying; browsers reject concurrent start().
+  render();
  };
- rec.onend=()=>{if(speech!==capture)return;const done=capture.onDone;
-  if(capture.closing){if(record.finalTranscript?.trim())record.transcript=record.finalTranscript;save();speech=null;if(done)done();return;}
+ rec.onend=()=>{
+  if(speech!==capture)return;
+  if(speechStopTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechStopTimer);speechStopTimer=null;}
+  if(speechErrorTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechErrorTimer);speechErrorTimer=null;}
+  const done=capture.onDone;
+  if(capture.closing){speech=null;save();if(done)done();return;}
   speech=null;
-  if(!capture.started&&(s.phase==='arming'||restart)){if(!restart)s.phase='ready';speechStatus='Le microphone n’a pas démarré. Choisis le mode sans micro ou réessaie.';save();render();return;}
-  if(s.phase==='speaking'){speechStatus='Le micro s’est arrêté. Le chronomètre continue ; termine ta réponse ou utilise le mode manuel.';save();render();}
+  // Retry at most once, with no hints and without resetting an already-running timer.
+  if(capture.error && !recovery && speechAttempt===0 &&
+     ['phrases-not-supported','no-speech','language-not-supported'].includes(capture.error)){
+   speechAttempt=1;
+   if(capture.error==='language-not-supported'){
+    const fallback=s.speechLocale.startsWith('en')?'en-US':'fr-FR';
+    if(s.speechLocale!==fallback){s.speechLocale=fallback;save();}else{
+     speechStatus=speechErrorMessage(capture.error);render();return;
+    }
+   }
+   if(active()===s&&current(s)?.id===itemId&&(!capture.started||s.phase==='speaking'&&timeRemaining(s)>3)){
+    if(!capture.started)s.phase='ready';
+    prepareSpeech(capture.started,true);
+    return;
+   }
+  }
+  if(!capture.started&&s.phase==='arming')s.phase='ready';
+  if(!capture.error && s.phase==='speaking')speechStatus='Le micro s’est arrêté. Le chronomètre continue ; relance-le ou utilise la saisie manuelle.';
+  save();render();
  };
- try{rec.start()}catch(err){speech=null;if(!restart)s.phase='ready';speechStatus='Microphone indisponible : '+String(err?.message||err);save();render();}
+ try{rec.start()}catch(err){
+  speech=null;if(!restart)s.phase='ready';
+  const code=err?.name==='NotAllowedError'?'not-allowed':err?.name==='SecurityError'?'service-not-allowed':'unknown';
+  speechStatus=speechErrorMessage(code)+' '+String(err?.message||'');save();render();
+ }
 }
-function endSpeech(immediate=false,done){if(!speech){if(done)done();return;}
+function endSpeech(immediate=false,done){
+ if(!speech){if(done)done();return;}
  const capture=speech;capture.closing=true;capture.onDone=done||null;
- try{capture.rec.stop()}catch{speech=null;if(done)done();return;}
+ if(speechStopTimer!==null){if(typeof clearTimeout==='function')clearTimeout(speechStopTimer);speechStopTimer=null;}
+ try{capture.rec.stop();}catch{speech=null;if(done)done();return;}
  if(immediate){speech=null;if(done)done();return;}
- setTimeout(()=>{if(speech===capture){speech=null;speechStatus='Finalisation interrompue : vérifie la transcription avant de poursuivre.';if(done)done();}},2000);
+ if(speech===capture)speechStopTimer=setTimeout(()=>{speechStopTimer=null;if(speech===capture){speech=null;speechStatus='La finalisation a pris trop de temps. Vérifie la transcription conservée.';if(done)done();}},2000);
 }
+
 function startManualOral(){const s=active(),item=s&&current(s);if(!s||item?.kind!=='oral'||s.phase!=='ready')return;
  const r=result(s,item);r.capture='manual';r.transcript='';r.startedAt=stamp();speechStatus='Mode sans micro : parle à voix haute, puis saisis la réponse pour la correction.';beginTimed(s,'speaking',ORAL_SECONDS);
 }
 function buildTimer(s,desc){const r=s.timer;return `<div class="timer-box" role="timer" aria-label="Temps restant, ${fmt(timeRemaining(s))}"><span class="timer-label">${e(desc)}</span><strong id="time-number" class="timer-number">${fmt(timeRemaining(s))}</strong><div class="timer-track"><span id="time-progress" style="width:${Math.max(0,100*timeRemaining(s)/r.seconds)}%"></span></div></div>`;}
 function timerDock(s,item){if(!s.timer)return '';return `<div class="timer-dock" aria-label="Chronomètre en haut à droite">${buildTimer(s,item.kind==='quiz'?'QCM':item.kind==='case'?'Cas écrit':'Réponse orale')}</div>`;}
-function head(s,item){const idx=s.cursor;return `${item?timerDock(s,item):''}${duplicateNotice?`<div class="notice amber" role="status">${e(duplicateNotice)}</div>`:''}<div class="topline"><div><p class="eyebrow">${e(s.pack.date)} · ${e(s.pack.language)} · Séance quotidienne</p><h1>${e(s.pack.title)}</h1><p class="muted">${item?`Exercice ${idx+1}/11 · ${item.kind==='quiz'?'Quiz':item.kind==='case'?'Cas écrit':'Confrontation orale'} ${item.number}`:'Séance terminée'}</p></div><div class="head-actions"><button class="btn ghost" data-action="export">↓ Réponses</button><button class="btn ghost" data-action="home">Mes séances</button></div></div><div class="progressbar" aria-label="Avancement de la séance"><span style="width:${(progress(s)/11)*100}%"></span></div><div class="stepbar"><span class="step-label">${progress(s)} sur 11 exercices terminés</span><span class="tag">${item?e(item.skill):'Terminé'}</span></div>${s.phase==='ready'?`<div class="prep-settings"><label>Aménagement du temps <select id="time-mode" class="input" ${modeLocked(s)?'disabled':''}><option value="1" ${s.timerMultiplier===1?'selected':''}>Standard · temps prévu</option><option value="2" ${s.timerMultiplier===2?'selected':''}>×2 · entraînement adapté</option><option value="10" ${s.timerMultiplier===10?'selected':''}>×10 · accessibilité</option></select></label>${modeLocked(s)?'<p class="small muted">Durée verrouillée après le premier exercice pour permettre un suivi comparable.</p>':''}</div>`:''}`;}
+function head(s,item){const idx=s.cursor;return `${item?timerDock(s,item):''}${duplicateNotice?`<div class="notice amber" role="status">${e(duplicateNotice)}</div>`:''}${s.recoveryNotice?`<div class="notice amber" role="status">${e(s.recoveryNotice)}</div>`:''}<div class="topline"><div><p class="eyebrow">${e(s.pack.date)} · ${e(s.pack.language)} · Séance quotidienne</p><h1>${e(s.pack.title)}</h1><p class="muted">${item?`Exercice ${idx+1}/11 · ${item.kind==='quiz'?'Quiz':item.kind==='case'?'Cas écrit':'Confrontation orale'} ${item.number}`:'Séance terminée'}</p></div><div class="head-actions"><button class="btn ghost" data-action="export">↓ Réponses</button><button class="btn ghost" data-action="home">Mes séances</button></div></div><div class="progressbar" aria-label="Avancement de la séance"><span style="width:${(progress(s)/11)*100}%"></span></div><div class="stepbar"><span class="step-label">${progress(s)} sur 11 exercices terminés</span><span class="tag">${item?e(item.skill):'Terminé'}</span></div>${s.phase==='ready'?`<div class="prep-settings"><label>Aménagement du temps <select id="time-mode" class="input" ${modeLocked(s)?'disabled':''}><option value="1" ${s.timerMultiplier===1?'selected':''}>Standard · temps prévu</option><option value="2" ${s.timerMultiplier===2?'selected':''}>×2 · entraînement adapté</option><option value="10" ${s.timerMultiplier===10?'selected':''}>×10 · accessibilité</option></select></label>${modeLocked(s)?'<p class="small muted">Durée verrouillée après le premier exercice pour permettre un suivi comparable.</p>':''}</div>`:''}`;}
 function renderQuiz(s,item){const r=s.answers[item.id]||{};let html=`<div class="panel"><div class="info-row"><span class="tag">QCM ${item.number}/6</span><span class="tag gray">40 secondes</span></div>`;
  if(s.phase==='ready')html+=`<h2 style="margin-top:16px">Question de raisonnement rapide</h2><p class="muted">La question apparaît au démarrage du chronomètre. Choisis une seule réponse ; la correction s’affiche immédiatement.</p><div class="actions"><button class="btn primary" data-action="quiz-start">Commencer la question · 40 s</button></div>`;
  else {html+=`<div class="question"><h2>${e(item.question)}</h2></div>`;
@@ -261,12 +447,12 @@ function renderCase(s,item){
   html+=`<section class="case-write-pane"><label class="field-label" for="case-answer">Ta réponse ou ta posture</label><textarea id="case-answer" placeholder="Écris ta réponse spontanée…" maxlength="9000" spellcheck="true">${e(r.text||'')}</textarea><div class="save-hint">● Sauvegarde locale à chaque saisie</div><div class="actions"><button class="btn primary" data-action="case-finish">Terminer et enregistrer</button></div></section>`;
   html+='</div>';
  }
- if(s.phase==='review')html+=`<div class="feedback"><strong>Réponse conservée</strong><p>Durée utilisée : ${r.elapsedSec==null?'—':r.elapsedSec+' s'} · ${r.timedOut?'Temps écoulé':'Fin volontaire'}. Correction détaillée après export vers ChatGPT.</p></div><div class="answer-text">${e(r.text?.trim()||'Aucune réponse écrite.')}</div>${stressSelector(r)}<div class="actions"><button class="btn primary" data-action="next">Exercice suivant →</button></div>`;
+ if(s.phase==='review')html+=`<div class="feedback"><strong>Réponse conservée</strong><p>Durée utilisée : ${r.elapsedSec==null?'—':e(r.elapsedSec)+' s'} · ${r.timedOut?'Temps écoulé':'Fin volontaire'}. Correction détaillée après export vers ChatGPT.</p></div><div class="answer-text">${e(r.text?.trim()||'Aucune réponse écrite.')}</div>${stressSelector(r)}<div class="actions"><button class="btn primary" data-action="next">Exercice suivant →</button></div>`;
  return html+'</div>';
 }
 function renderOral(s,item){const r=s.answers[item.id]||{};let html=`<div class="panel"><div class="info-row"><span class="tag">Confrontation ${item.number}/3</span><span class="tag gray">40 secondes de réponse</span></div><h2 style="margin-top:16px">Réactivité orale</h2><div class="question"><span class="eyebrow">Contexte</span><p>${e(item.context)}</p><span class="eyebrow">Interlocuteur</span><h3 style="margin-bottom:0">« ${e(item.confrontation)} »</h3></div>`;
- if(s.phase==='ready')html+=`<p class="muted">Lis la confrontation avant de commencer. Les ${ORAL_SECONDS*(s.timerMultiplier||1)} secondes ne démarrent qu’après l'activation effective de la reconnaissance vocale.</p><div class="speech-pref"><label class="field-label" for="speech-locale">Langue et accent de transcription</label><select id="speech-locale" class="input">${LOCALES[s.pack.language].map(([code,label])=>`<option value="${code}" ${s.speechLocale===code?'selected':''}>${e(label)}</option>`).join('')}</select><span class="small muted">Choisis l'accent que tu parles avant d'activer le micro.</span><div class="actions"><button class="btn subtle" data-action="${testSpeech?'speech-test-stop':'speech-test'}">${testSpeech?'■ Arrêter le test':'🎙 Tester la dictée (sans chronomètre)'}</button></div>${testTranscript?`<p class="small"><strong>Résultat du test :</strong> ${e(testTranscript)}</p>`:''}</div><div class="actions"><button class="btn primary" data-action="speech-start" ${testSpeech?'disabled':''}>🎙 Activer le micro et démarrer · ${ORAL_SECONDS*(s.timerMultiplier||1)} s</button><button class="btn ghost" data-action="manual-start">Mode sans micro</button></div><div class="notice amber small">La dictée dépend de ton navigateur et peut utiliser un service distant. Une transcription n'est pas une note de prononciation. Le texte brut sera conservé.</div>${speechStatus?`<div class="status error" role="alert" style="margin-top:12px">${e(speechStatus)}</div>`:''}`;
- if(s.phase==='arming')html+=`<div class="status">Autorisation du microphone en attente… Aucun temps n’est encore comptabilisé.</div><div class="actions"><button class="btn ghost" data-action="speech-cancel">Annuler et choisir le mode sans micro</button></div>`;
+ if(s.phase==='ready')html+=`<p class="muted">Lis la confrontation avant de commencer. Les ${ORAL_SECONDS*(s.timerMultiplier||1)} secondes ne démarrent qu’après l'activation effective de la reconnaissance vocale.</p><div class="speech-pref"><label class="field-label" for="speech-locale">Langue et accent de transcription</label><select id="speech-locale" class="input">${ALL_LOCALES.map(([code,label])=>`<option value="${code}" ${s.speechLocale===code?'selected':''}>${e(label)}</option>`).join('')}</select><span class="small muted">Français et anglais disponibles pour toutes les séances. La langue sélectionnée est appliquée à la dictée. Pour de meilleurs résultats, utilise la langue parlée.</span><div class="actions"><button class="btn subtle" data-action="${testSpeech?'speech-test-stop':'speech-test'}">${testSpeech?'■ Arrêter le test':'🎙 Tester la dictée (sans chronomètre)'}</button></div>${testTranscript?`<p class="small"><strong>Résultat du test :</strong> ${e(testTranscript)}</p>`:''}</div><div class="actions"><button class="btn primary" data-action="speech-start" ${testSpeech?'disabled':''}>🎙 Activer le micro et démarrer · ${ORAL_SECONDS*(s.timerMultiplier||1)} s</button><button class="btn ghost" data-action="manual-start">Mode sans micro</button></div><div class="notice amber small">La dictée dépend de ton navigateur et peut utiliser un service distant. Une transcription n'est pas une note de prononciation. Le texte brut sera conservé.</div>${speechStatus?`<div class="status error" role="alert" style="margin-top:12px">${e(speechStatus)}</div>`:''}`;
+ if(s.phase==='arming')html+=`<div class="status">${e(speechStatus||'Autorisation du microphone en attente… Aucun temps n’est encore comptabilisé.')}</div><div class="actions"><button class="btn ghost" data-action="speech-cancel">Annuler et choisir le mode sans micro</button></div>`;
  if(s.phase==='speaking'){
   html+=`<div class="status ${speechStatus.includes('arrêt')?'error':''}" role="status">${e(speechStatus||'Réponse en cours')}</div>`;
   if(r.capture==='manual'||(!speech&&r.capture==='browser-speech'))html+=`<label class="field-label" for="manual-draft">${r.capture==='manual'?'Retranscription manuelle (mode secours)':'Micro interrompu : complète au besoin la transcription'}</label><textarea id="manual-draft" maxlength="9000" placeholder="Note la réponse prononcée, sans l’améliorer…">${e(r.transcript||'')}</textarea>`;
@@ -274,7 +460,7 @@ function renderOral(s,item){const r=s.answers[item.id]||{};let html=`<div class=
   html+=`<div class="actions">${!speech&&r.capture==='browser-speech'?'<button class="btn subtle" data-action="speech-resume">↻ Relancer le micro</button>':''}<button class="btn primary" data-action="oral-finish">Terminer ma réponse</button></div>`;
  }
  if(s.phase==='closing')html+=`<div class="status">Finalisation de la dictée…</div>`;
- if(s.phase==='review')html+=`<div class="feedback"><strong>Réponse terminée</strong><p>Durée : ${r.elapsedSec==null?'—':r.elapsedSec+' s'} · ${r.capture==='manual'?'Mode manuel':'Reconnaissance navigateur'}${r.timedOut?' · temps écoulé':''}.</p></div><label class="field-label" for="edited-transcript">Transcription obtenue — corrige uniquement les erreurs de reconnaissance</label><textarea id="edited-transcript" maxlength="9000">${e(r.editedTranscript??r.transcript??'')}</textarea>${r.alternatives?.length?`<details class="alt-transcripts"><summary>Autres hypothèses reconnues (${r.alternatives.length})</summary><p class="small muted">Le navigateur a proposé d'autres mots pour certaines parties de ta réponse. Ces suggestions ne sont pas une correction certaine.</p><ul>${r.alternatives.map(a=>`<li>${e(a)}</li>`).join('')}</ul></details>`:''}<p class="small muted">Le texte brut reste conservé séparément. Ne change que les erreurs de dictée : l'évaluation porte sur la réponse prononcée.</p>${stressSelector(r)}<div class="actions"><button class="btn primary" data-action="next">${s.cursor===10?'Voir mon bilan →':'Exercice suivant →'}</button></div>`;
+ if(s.phase==='review')html+=`<div class="feedback"><strong>Réponse terminée</strong><p>Durée : ${r.elapsedSec==null?'—':e(r.elapsedSec)+' s'} · ${r.capture==='manual'?'Mode manuel':'Reconnaissance navigateur'}${r.timedOut?' · temps écoulé':''}.</p></div><label class="field-label" for="edited-transcript">Transcription obtenue — corrige uniquement les erreurs de reconnaissance</label><textarea id="edited-transcript" maxlength="9000">${e(r.editedTranscript??r.transcript??'')}</textarea>${r.alternatives?.length?`<details class="alt-transcripts"><summary>Autres hypothèses reconnues (${r.alternatives.length})</summary><p class="small muted">Le navigateur a proposé d'autres mots pour certaines parties de ta réponse. Ces suggestions ne sont pas une correction certaine.</p><ul>${r.alternatives.map(a=>`<li>${e(a)}</li>`).join('')}</ul></details>`:''}<p class="small muted">Le texte brut reste conservé séparément. Ne change que les erreurs de dictée : l'évaluation porte sur la réponse prononcée.</p>${stressSelector(r)}<div class="actions"><button class="btn primary" data-action="next">${s.cursor===10?'Voir mon bilan →':'Exercice suivant →'}</button></div>`;
  return html+'</div>';
 }
 function doneSessions(){return Object.values(db.sessions).filter(s=>s.phase==='finished'||s.cursor>=11).sort((a,b)=>String(b.finishedAt||b.pack.date).localeCompare(String(a.finishedAt||a.pack.date)));}
@@ -298,7 +484,7 @@ function renderHistory(){
  <h3>Évolution des 5 repères sur 0–5</h3><p class="small muted">Moyennes par compétence sur les 7, 14 et 30 dernières séances <strong>terminées au temps standard</strong>. Les modes ×2 et ×10 restent archivés, sans être mélangés aux moyennes. « — » signifie qu'aucune note n'a été saisie ; les anciennes notes sur 0–4 restent archivées et sont exclues de ces moyennes. La variation compare les 7 dernières séances aux 7 précédentes.</p>
  <div class="table-scroll"><table class="score-table"><thead><tr><th>Compétence</th><th>7 séances</th><th>14 séances</th><th>30 séances</th><th>Variation</th></tr></thead><tbody>${trendRows(comparable)}</tbody></table></div>
  ${done.length?`<div class="mini-history" role="list">${done.slice(0,30).map(x=>{const grade=sessionAxisMean(x);return `<div class="history-line" role="listitem"><span><strong>${e(x.pack.date)}</strong><small>${e(x.pack.title)} · ${e(x.pack.language)}${x.timerMultiplier!==1?' · temps ×'+x.timerMultiplier:''}</small></span><span>QCM ${quizScore(x)}/6</span><span>${grade===null?'Repères incomplets':grade.toFixed(1)+'/5'}</span><button class="btn subtle" data-action="open" data-id="${e(x.pack.session_id)}">Consulter</button></div>`;}).join('')}</div>`:'<p class="muted">Les résultats apparaîtront ici après ta première séance terminée.</p>'}
- <div class="actions"><button class="btn subtle" data-action="backup">↓ Sauvegarder toutes mes séances</button><label class="btn subtle backup-label">↥ Restaurer une sauvegarde<input type="file" id="backup-upload" accept=".json,application/json" aria-label="Restaurer une sauvegarde JSON"></label><button class="btn warn" data-action="reset-progress">↻ Réinitialiser le progrès</button></div><p class="small muted">La réinitialisation efface réponses et notes, mais garde les fichiers de séances. Elle demande confirmation et télécharge une sauvegarde. Une restauration peut remplacer les progrès existants uniquement avec ton accord.</p></section>`;
+ <div class="actions"><button class="btn subtle" data-action="backup">↓ Sauvegarder toutes mes séances</button><label class="btn subtle backup-label">↥ Restaurer une sauvegarde<input type="file" id="backup-upload" accept=".json,application/json" aria-label="Restaurer une sauvegarde JSON"></label><button class="btn warn" data-action="reset-progress">↻ Réinitialiser le progrès</button><button class="btn warn" data-action="delete-all">Supprimer toutes les séances</button><button class="btn warn" data-action="reset-app">Réinitialiser l’application</button></div><p class="small muted">La réinitialisation efface réponses et notes, mais garde les fichiers de séances. Elle demande confirmation et télécharge une sauvegarde. Une restauration peut remplacer les progrès existants uniquement avec ton accord.</p></section>`;
 }
 function packHome(){
  const today=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
@@ -308,14 +494,14 @@ function packHome(){
  <section class="panel import-panel"><div class="section-heading"><div><span class="eyebrow">Préparer sa séance</span><h2>Importer le fichier du jour</h2></div><span class="tag green">Format validé</span></div><p class="muted">Le fichier contient 6 QCM, 2 cas écrits et 3 confrontations orales. Un import ne supprime jamais les séances précédentes.</p>
  <label class="upload"><span aria-hidden="true" class="upload-symbol">⇧</span><span class="upload-text"><strong>Choisir un fichier JSON de séance</strong><small>Fichier fourni dans notre conversation ChatGPT</small><input id="session-upload" type="file" accept=".json,application/json" aria-label="Fichier de séance à importer"></span></label>
  <div class="actions"><button class="btn primary" data-action="demo">Essayer la séance modèle</button><a class="btn" href="seance_2026-11-07.json" download>Télécharger la séance modèle</a></div></section>
- <section class="panel"><div class="section-heading"><h2>Mes séances</h2><span class="tag gray">${hist.length} enregistrée${hist.length>1?'s':''}</span></div>${hist.length?`<div class="history-list">${hist.map(s=>`<div class="history-item"><div><strong>${e(s.pack.title)}</strong><p class="muted small">${e(s.pack.date)} · ${e(s.pack.language)} · ${progress(s)}/11 exercices ${s.phase==='finished'?'· terminée':'· en cours'}</p></div><button class="btn subtle" data-action="open" data-id="${e(s.pack.session_id)}">${s.phase==='finished'?'Voir le bilan':'Reprendre'}</button></div>`).join('')}</div>`:'<p class="muted">Aucune séance enregistrée. Commence par importer le fichier du jour.</p>'}</section>
+ <section class="panel"><div class="section-heading"><h2>Mes séances</h2><span class="tag gray">${hist.length} enregistrée${hist.length>1?'s':''}</span></div>${hist.length?`<div class="history-list">${hist.map(s=>`<div class="history-item"><div><strong>${e(s.pack.title)}</strong><p class="muted small">${e(s.pack.date)} · ${e(s.pack.language)} · ${progress(s)}/11 exercices ${s.phase==='finished'?'· terminée':'· en cours'}</p></div><button class="btn subtle" data-action="open" data-id="${e(s.pack.session_id)}">${s.phase==='finished'?'Voir le bilan':'Reprendre'}</button><button class="btn warn" data-action="delete-session" data-id="${e(s.pack.session_id)}">Supprimer</button></div>`).join('')}</div>`:'<p class="muted">Aucune séance enregistrée. Commence par importer le fichier du jour.</p>'}</section>
  ${renderHistory()}<div class="privacy-note">Tes textes et notes sont enregistrés localement, sans synchronisation automatique. La dictée vocale du navigateur peut utiliser un service distant. L'envoi des réponses à ChatGPT reste volontaire.</div>`;
 }
 function renderFinished(s){
  const items=steps(s.pack),graded=items.map(i=>s.grades[i.id]).filter(n=>Number.isInteger(n)&&n>=0&&n<=5);
  const axisGraded=AXES.map(([key])=>axisScore(s,key)).filter(n=>n!==null);
  let html=head(s,null)+`<section class="panel completed-hero"><div class="info-row"><span class="tag green">11 exercices terminés</span><span class="tag">QCM · ${quizScore(s)}/6 corrects</span></div><h2>Bilan de ta séance</h2><p class="muted">Télécharge le fichier de tes 11 réponses et joins-le à ChatGPT. Je te fournirai des explications supplémentaires pour les QCM incorrects, une correction des deux cas écrits, une analyse des trois confrontations et <strong>cinq repères notés sur 0 à 5</strong>. Recopie ensuite ces notes ci-dessous : aucune note qualitative n'est inventée par l'application.</p>
- <div class="actions"><button class="btn primary" data-action="export">↓ Exporter les 11 réponses</button><button class="btn ghost" data-action="home">Mes séances et progrès</button><button class="btn warn" data-action="restart-session">↻ Recommencer cette séance</button></div><div class="file-box small"><strong>Format à demander au coach :</strong> correction par identifiant, justificatif des erreurs QCM, correction écrite, analyse des confrontations, cinq repères sur 0–5, une priorité de travail pour demain.</div>
+ <div class="actions"><button class="btn primary" data-action="export">↓ Exporter les 11 réponses</button><button class="btn ghost" data-action="home">Mes séances et progrès</button><button class="btn warn" data-action="restart-session">↻ Recommencer cette séance</button><button class="btn warn" data-action="delete-session" data-id="${e(s.pack.session_id)}">Supprimer cette séance</button></div><div class="file-box small"><strong>Format à demander au coach :</strong> correction par identifiant, justificatif des erreurs QCM, correction écrite, analyse des confrontations, cinq repères sur 0–5, une priorité de travail pour demain.</div>
  ${s.migratedFromV1?`<div class="notice amber">Cet <strong>essai enregistré localement</strong> a commencé avec Daily 1.0. Importer un nouveau fichier portant le même identifiant rouvre cet ancien essai. ${Object.keys(s.legacyGrades||{}).length?'Les notes historiques sur 0–4 sont archivées séparément.':'Aucune ancienne note sur 0–4 n’était renseignée.'} Pour refaire les exercices selon les règles actuelles, choisis « Recommencer cette séance ».</div>`:''}</section>
  <section class="panel coaching-panel"><div class="section-heading"><div><span class="eyebrow">Retour du coach</span><h2>Mes cinq repères d'amélioration</h2></div><span class="tag">Échelle 0–5</span></div><p class="muted small" id="axis-summary">${axisGraded.length}/5 repères notés${axisGraded.length?' · moyenne '+meanLabel(axisGraded):''}. Les valeurs non renseignées ne comptent pas dans les moyennes.</p><div class="axis-grid">`;
  for(let n=0;n<AXES.length;n++){
@@ -331,7 +517,7 @@ function renderFinished(s){
   else if(i.kind==='case')answer=e(r.text||'Aucune réponse écrite.');
   else answer=e(r.editedTranscript??r.transcript??'Aucune transcription.');
   const legacy=s.legacyGrades?.[i.id];
-  html+=`<details class="result-card"><summary class="result-head"><span><span class="tag gray">${isQuiz?'QCM':i.kind==='case'?'Écrit':'Oral'} ${i.number}</span> <strong>${e(i.id)}</strong> ${legacy!==undefined?`<small class="muted">ancienne note ${legacy}/4</small>`:''}</span><span class="muted small">${r.elapsedSec==null?'—':r.elapsedSec+' s'} · Correction</span></summary><div class="result-body"><div class="answer-text">${answer}</div><div class="grade-row"><div><label class="field-label" for="grade-${n}">Note du coach (0–5)</label><select class="input grade-field" id="grade-${n}" data-id="${e(i.id)}"><option value="">Non noté</option>${[0,1,2,3,4,5].map(v=>`<option value="${v}" ${grade===v?'selected':''}>${v}/5</option>`).join('')}</select></div><div><label class="field-label" for="note-${n}">Correction ou conseil du coach</label><textarea class="note-field" id="note-${n}" data-id="${e(i.id)}" rows="3" maxlength="1800" placeholder="Reprends l'analyse du coach ici…">${e(note)}</textarea></div></div></div></details>`;
+  html+=`<details class="result-card"><summary class="result-head"><span><span class="tag gray">${isQuiz?'QCM':i.kind==='case'?'Écrit':'Oral'} ${i.number}</span> <strong>${e(i.id)}</strong> ${legacy!==undefined?`<small class="muted">ancienne note ${e(legacy)}/4</small>`:''}</span><span class="muted small">${r.elapsedSec==null?'—':e(r.elapsedSec)+' s'} · Correction</span></summary><div class="result-body"><div class="answer-text">${answer}</div><div class="grade-row"><div><label class="field-label" for="grade-${n}">Note du coach (0–5)</label><select class="input grade-field" id="grade-${n}" data-id="${e(i.id)}"><option value="">Non noté</option>${[0,1,2,3,4,5].map(v=>`<option value="${v}" ${grade===v?'selected':''}>${v}/5</option>`).join('')}</select></div><div><label class="field-label" for="note-${n}">Correction ou conseil du coach</label><textarea class="note-field" id="note-${n}" data-id="${e(i.id)}" rows="3" maxlength="1800" placeholder="Reprends l'analyse du coach ici…">${e(note)}</textarea></div></div></div></details>`;
  }
  html+=`</div><div class="actions"><button class="btn primary" data-action="export">↓ Exporter mes réponses</button><button class="btn ghost" data-action="home">Voir mes progrès</button></div></section>`;
  return html;
@@ -388,6 +574,9 @@ async function handleAction(btn){const a=btn.dataset.action,s=active();
  if(a==='home'){if(speech)endSpeech(true);stopSpeechTest();clearTick();db.activeId=null;save();render();return;}
  if(a==='backup'){exportBackup();return;}
  if(a==='reset-progress'){resetProgress();return;}
+ if(a==='delete-session'){deleteSession(btn.dataset.id||s?.pack?.session_id);return;}
+ if(a==='delete-all'){deleteAllSessions();return;}
+ if(a==='reset-app'){await resetApplication();return;}
  if(a==='restart-session'){restartSession();return;}
  if(a==='export'){exportAnswers();return;}
  if(a==='demo'){try{const r=await fetch('seance_2026-11-07.json?v=2.0.0');if(!r.ok)throw Error('Séance modèle introuvable.');create(await r.json())}catch(err){notify('Impossible de charger la séance modèle : '+err.message)}return;}
@@ -399,9 +588,9 @@ async function handleAction(btn){const a=btn.dataset.action,s=active();
  if(a==='case-finish'){finishCase(false);return;}
  if(a==='speech-test'){prepareSpeechTest();return;}
  if(a==='speech-test-stop'){stopSpeechTest();speechStatus='Test de dictée arrêté. Tu peux maintenant démarrer ta réponse.';render();return;}
- if(a==='speech-start'){speechStatus='';prepareSpeech();return;}
+ if(a==='speech-start'){speechStatus='';speechAttempt=0;prepareSpeech();return;}
  if(a==='speech-cancel'&&s.phase==='arming'){endSpeech(true);s.phase='ready';s.timer=null;speechStatus='Autorisation annulée. Tu peux réessayer ou choisir le mode sans micro.';save();render();return;}
- if(a==='speech-resume'){prepareSpeech(true);return;}
+ if(a==='speech-resume'){speechAttempt=0;prepareSpeech(true);return;}
  if(a==='manual-start'){startManualOral();return;}
  if(a==='oral-finish'){finishOral(false);return;}
  if(a==='next'){next();return;}
@@ -414,14 +603,14 @@ function bind(){
   const s=active();if(!s)return;
   if(el.id==='stress-report'&&s.phase==='review'){result(s,current(s)).stressReported=el.value===''?null:Number(el.value);save();return;}
   if(el?.id==='time-mode'&&s.phase==='ready'&&!modeLocked(s)){const v=Number(el.value);if([1,2,10].includes(v)){s.timerMultiplier=v;save();render();}return;}
-  if(el?.id==='speech-locale'&&s.phase==='ready'){if(LOCALES[s.pack.language].some(([code])=>code===el.value)){s.speechLocale=el.value;save();}return;}
+  if(el?.id==='speech-locale'&&s.phase==='ready'){if(ALL_LOCALES.some(([code])=>code===el.value)){s.speechLocale=el.value;save();}return;}
   if(s.phase!=='finished')return;
   if(el.classList.contains('grade-field')){const v=el.value===''?null:Number(el.value);if(v!==null&&(!Number.isInteger(v)||v<0||v>5))return;s.grades[el.dataset.id]=v;save();const gr=Object.values(s.grades).filter(n=>Number.isInteger(n)&&n>=0&&n<=5),sum=byId('grade-summary');if(sum)sum.textContent=gr.length+'/11 notes renseignées'+(gr.length?' · moyenne indicative '+meanLabel(gr):'')+'. Les bonnes réponses QCM restent distinctes.';notify('Note enregistrée : '+el.dataset.id);return;}
   if(el.classList.contains('axis-grade')){const key=el.dataset.axis,v=el.value===''?null:Number(el.value);if(!AXES.some(([id])=>id===key)||(v!==null&&(!Number.isInteger(v)||v<0||v>5)))return;s.axes[key]=v;save();const scores=AXES.map(([id])=>axisScore(s,id)).filter(x=>x!==null),summary=byId('axis-summary');if(summary)summary.textContent=scores.length+'/5 repères notés'+(scores.length?' · moyenne '+meanLabel(scores):'')+'. Les valeurs non renseignées ne comptent pas.';notify('Repère enregistré : '+key);return;}
  });
  document.addEventListener('input',ev=>{const s=active();if(!s)return;const el=ev.target;
   if(el?.id==='case-answer'&&s.phase==='writing'){if(s.timer&&timeRemaining(s)<=0){expire();return;}const r=result(s,current(s));r.text=el.value.slice(0,9000);save();return;}
-  if(el?.id==='manual-draft'&&s.phase==='speaking'){const r=result(s,current(s));r.transcript=el.value.slice(0,9000);save();return;}
+  if(el?.id==='manual-draft'&&s.phase==='speaking'){if(s.timer&&timeRemaining(s)<=0){expire();return;}const r=result(s,current(s));r.transcript=el.value.slice(0,9000);save();return;}
   if(el?.id==='edited-transcript'&&s.phase==='review'){saveEditedTranscript(el.value);return;}
   if(el.classList?.contains('note-field')&&s.phase==='finished'){s.coachNotes[el.dataset.id]=el.value.slice(0,1800);save();return;}
   if(el.classList?.contains('axis-note')&&s.phase==='finished'&&AXES.some(([key])=>key===el.dataset.axis)){s.axisNotes[el.dataset.axis]=el.value.slice(0,1200);save();return;}

@@ -1,3 +1,13 @@
+# Response Lab Daily 2.2 — Audit QA, suppression et reconnaissance vocale stabilisée
+
+**Correctifs vérifiés** : suppression individuelle des séances, suppression de toutes les séances, réinitialisation complète des données **propres à Response Lab Daily**, avec sauvegarde préalable et deux confirmations. **Attention** : le téléchargement d'une sauvegarde ne peut pas être certifié par JavaScript, l'utilisateur doit vérifier la présence du fichier. Le témoin vide `response-lab-daily-state-v2` reste volontairement pour empêcher une remigration automatique des séances supprimées depuis la clé v1.
+
+**Dictée** : français et anglais (fr-FR/fr-CA/en-US/en-GB/en-AU/en-IN) affichés sur chaque séance, même si le fichier importé est en FR. L'option expérimentale `SpeechRecognition.phrases` a été supprimée du démarrage. Traitement spécifique de `phrases-not-supported`, `not-allowed`, `service-not-allowed`, `no-speech`, `audio-capture`, `network`, `language-not-supported`, `aborted` avec action proposée ; un seul réessai automatique pour les erreurs récupérables. Les résultats bruts restent enregistrés et le texte peut être complété sans micro.
+
+**Audit** : voir [AUDIT_QA_2_2.md](AUDIT_QA_2_2.md) et les tests de régression. Aucun navigateur n'est garanti universellement : autorisations et disponibilité de la dictée sont à vérifier sur chaque appareil.
+
+## Historique des versions
+
 # Response Lab Daily 2.1 — Correctif de cohérence et de sécurité
 
 L'application conserve la structure de 6 QCM, 2 cas écrits (110 secondes simultanées) et 3 confrontations orales (40 secondes). Chronomètre en haut à droite. Cinq repères sur **0 à 5**.
@@ -59,7 +69,7 @@ Application web installable (PWA) et utilisable gratuitement, sans clé d'API. *
 
 ## Limites honnêtes de la reconnaissance vocale
 
-La Web Speech API ne fonctionne pas sur tous les navigateurs et peut utiliser un service externe : même si **les transcriptions et notes sont conservées localement**, la promesse de transcription 100 % hors ligne n'est **pas** faite. Les accents configurables, les indices de vocabulaire `keywords` et les hypothèses alternatives visent une meilleure reconnaissance, sans la garantir. **La transcription n'évalue pas la prononciation.** Aucun audio brut n'est enregistré dans l'application Daily.
+La Web Speech API ne fonctionne pas sur tous les navigateurs et peut utiliser un service externe : même si **les transcriptions et notes sont conservées localement**, la promesse de transcription 100 % hors ligne n'est **pas** faite. Les accents configurables et les hypothèses alternatives permettent de contrôler le résultat sans garantir une meilleure reconnaissance, sans la garantir. **La transcription n'évalue pas la prononciation.** Aucun audio brut n'est enregistré dans l'application Daily.
 
 ## Tests
 

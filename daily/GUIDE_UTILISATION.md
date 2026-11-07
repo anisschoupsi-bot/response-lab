@@ -1,4 +1,4 @@
-# Guide d'utilisation — Response Lab Daily 2.0
+# Guide d'utilisation — Response Lab Daily 2.2
 
 ## Importer la séance du jour
 
@@ -50,3 +50,20 @@ Dans le bilan d'une séance terminée, clique sur **« Recommencer cette séance
 Pour restaurer, utilise **« Restaurer une sauvegarde »**. Si des séances existent déjà, l'application demande expressément si elle peut remplacer leurs résultats. Cette opération permet de récupérer un historique précédemment réinitialisé.
 
 Le message « ancienne version » a été précisé : il correspond uniquement à un essai migré de Daily 1.0, et non au nouveau fichier de séance téléchargé. Les anciennes notes /4 restent archivées, les nouvelles notes /5 restent séparées.
+
+
+## Daily 2.2 — Supprimer et réinitialiser
+
+- Sur l'accueil, **Supprimer** à côté d'une séance l'efface seule.
+- Dans **Historique et progression**, **Supprimer toutes les séances** retire les fichiers importés ainsi que les réponses. **Réinitialiser le progrès** conserve les scénarios et vide seulement réponses, scores et historique des progrès.
+- **Réinitialiser l'application** retire toutes les séances et données locales appartenant à *Response Lab Daily*, plus ses caches hors ligne et bases IndexedDB éventuelles. L'application ne touche **pas** aux autres versions de Response Lab publiées sur le même domaine.
+- Chaque suppression destructive est précédée d'une proposition de sauvegarde et nécessite deux confirmations. Le navigateur ne confirme pas que le fichier a bien été écrit : vérifie personnellement le téléchargement.
+- La suppression est persistée dans la clé v2. L'ancien stockage v1 est nettoyé lors d'une suppression globale pour éviter une réapparition des séances au rechargement.
+
+## Daily 2.2 — Langue et dictée
+
+- Avant une confrontation, choisis la langue de reconnaissance directement : **Français (France/Canada)** ou **English (US/UK/Australia/India)**, sans dépendre de la langue du scénario.
+- Le micro ne démarre pas le chronomètre avant l'événement de démarrage de la reconnaissance. Le test de micro reste hors temps.
+- La dictée utilise les fonctions standards `SpeechRecognition` ; elle **n'ajoute plus `phrases` ni `processLocally`**, dont la prise en charge est variable. Pour `phrases-not-supported`, une seule tentative automatique est réalisée, puis le mode manuel est proposé.
+- Si le micro est inaccessible, tu peux **parler hors micro et écrire la réponse** ; l'application ne prétend pas transcrire sans moteur de reconnaissance.
+- La langue de l'interface reste en français ; seul le moteur de transcription suit le choix de langue.
