@@ -1,0 +1,128 @@
+{
+  "schema": "response-lab-daily-session-v1",
+  "session_id": "RL-D-2026-11-07",
+  "date": "2026-11-07",
+  "language": "FR",
+  "title": "Jour 1 — Priorités, risques et réponses rapides",
+  "objectives": [
+    "Distinguer le problème réel des détails secondaires",
+    "Choisir une décision proportionnée à l’information disponible",
+    "Répondre à une objection sans précipitation inutile"
+  ],
+  "quiz": [
+    {
+      "id": "J1-Q1",
+      "skill": "attention",
+      "question": "Un client veut une livraison vendredi. Le transporteur confirme lundi, mais l’emballage est déjà prêt. Quelle information détermine la faisabilité ?",
+      "options": [
+        "La présentation du colis",
+        "La date confirmée par le transporteur",
+        "La durée de la réunion commerciale",
+        "Le nombre de personnes dans l’équipe"
+      ],
+      "correct_index": 1,
+      "explanation": "La date confirmée par le transporteur constitue la contrainte principale. Les autres éléments ne règlent pas le délai."
+    },
+    {
+      "id": "J1-Q2",
+      "skill": "raisonnement",
+      "question": "Un projet a trois jours de retard. On sait que la validation juridique prend deux jours, mais on ignore l’avancement technique. Quelle conclusion est justifiée ?",
+      "options": [
+        "L’équipe technique est responsable du retard",
+        "Le projet est impossible à terminer",
+        "Il faut vérifier l’avancement technique avant d’attribuer la cause",
+        "La validation juridique n’a aucun impact"
+      ],
+      "correct_index": 2,
+      "explanation": "Les données sont insuffisantes pour identifier la cause. Une bonne analyse sépare ce qui est connu de ce qui reste à vérifier."
+    },
+    {
+      "id": "J1-Q3",
+      "skill": "décision",
+      "question": "Deux tâches urgentes arrivent en même temps. Une seule personne peut les traiter et l’une bloque cinq collègues. Quelle première action est la plus pertinente ?",
+      "options": [
+        "Traiter la tâche la plus courte sans vérifier",
+        "Clarifier l’échéance et l’impact de chaque tâche pour arbitrer",
+        "Demander à tous de patienter sans explication",
+        "Commencer les deux en parallèle malgré l’impossibilité"
+      ],
+      "correct_index": 1,
+      "explanation": "Un arbitrage doit considérer dépendances, échéances et conséquences, pas seulement l’étiquette « urgent »."
+    },
+    {
+      "id": "J1-Q4",
+      "skill": "flexibilité",
+      "question": "Tu proposes de livrer lundi. Ton interlocuteur précise qu’un événement impose impérativement vendredi. Quelle adaptation est rationnelle ?",
+      "options": [
+        "Répéter la proposition de lundi",
+        "Promettre vendredi sans ressources",
+        "Explorer une livraison partielle ou un autre transporteur avec ses contraintes",
+        "Annuler la discussion immédiatement"
+      ],
+      "correct_index": 2,
+      "explanation": "La nouvelle contrainte demande un changement de stratégie et une vérification des options possibles."
+    },
+    {
+      "id": "J1-Q5",
+      "skill": "inhibition",
+      "question": "On te dit : « Votre solution est inutile. » Quelle réponse évite le mieux une réaction impulsive ?",
+      "options": [
+        "« Vous ne comprenez rien. »",
+        "« Vous avez tort, c’est évident. »",
+        "« Quel résultat attendu n’est pas couvert par la solution ? »",
+        "« Alors débrouillez-vous. »"
+      ],
+      "correct_index": 2,
+      "explanation": "Demander une précision transforme un jugement global en point vérifiable et évite une escalade inutile."
+    },
+    {
+      "id": "J1-Q6",
+      "skill": "mémoire-de-travail",
+      "question": "Tu retiens trois contraintes : budget plafonné, délai vendredi et qualité contrôlée. Une nouvelle proposition dépasse le budget mais respecte les deux autres. Quel résumé est exact ?",
+      "options": [
+        "Toutes les contraintes sont satisfaites",
+        "La proposition respecte le délai et la qualité, mais pas le budget",
+        "La proposition ne respecte aucune contrainte",
+        "Seul le budget est respecté"
+      ],
+      "correct_index": 1,
+      "explanation": "Il faut suivre simultanément les trois critères sans perdre la contrainte budgétaire."
+    }
+  ],
+  "cases": [
+    {
+      "id": "J1-E1",
+      "skill": "analyse-et-priorisation",
+      "title": "Arbitrer sous contrainte de temps",
+      "context": "Tu pilotes un projet de lancement. Il reste quatre jours. Le service commercial souhaite ajouter une fonctionnalité appréciée des clients, mais l’équipe technique estime qu’elle nécessitera trois jours de développement et un jour de validation. Par ailleurs, deux anomalies critiques existantes doivent être corrigées avant la mise en production. La direction demande un arbitrage immédiat sans dépasser la date prévue.",
+      "task": "Rédige une réponse structurée à la direction : identifie la priorité, explique ton arbitrage et propose une action de suivi vérifiable."
+    },
+    {
+      "id": "J1-E2",
+      "skill": "raisonnement-et-gestion-des-risques",
+      "title": "Une donnée contredit une décision",
+      "context": "Une équipe recommande un nouveau prestataire, annoncé 15 % moins cher. Tu apprends ensuite que le délai de livraison serait plus long de cinq jours et qu’aucun test de qualité n’a encore été réalisé. Le responsable des achats souhaite signer dès aujourd’hui, car la réduction budgétaire semble intéressante. Le besoin opérationnel est urgent, mais une rupture de service coûterait davantage que l’économie annoncée.",
+      "task": "Explique la décision que tu prendrais maintenant, ce que tu vérifierais en priorité et comment tu le présenterais au responsable des achats."
+    }
+  ],
+  "oral": [
+    {
+      "id": "J1-O1",
+      "skill": "clarification-et-reponse",
+      "context": "Tu présentes une nouvelle méthode de travail à ton responsable. Il n’a pas expliqué son désaccord.",
+      "confrontation": "« Votre méthode ne me convainc pas. On a toujours fait autrement et je ne veux pas perdre de temps. »"
+    },
+    {
+      "id": "J1-O2",
+      "skill": "argumentation-sous-pression",
+      "context": "Tu négocies une prestation. Ton prix a été construit à partir des besoins, mais ton interlocuteur n’a pas indiqué quel critère lui semble excessif.",
+      "confrontation": "« C’est beaucoup trop cher. Vous devez réduire le tarif de 20 % dès maintenant. »"
+    },
+    {
+      "id": "J1-O3",
+      "skill": "adaptation-et-gestion-du-stress",
+      "context": "Tu as proposé de livrer lundi. Le client t’interrompt et annonce une contrainte nouvelle : il doit organiser un événement vendredi.",
+      "confrontation": "« Lundi, c’est trop tard. Je veux une solution crédible pour vendredi, sans promesse irréaliste. Qu’est-ce que vous proposez ? »"
+    }
+  ]
+}
