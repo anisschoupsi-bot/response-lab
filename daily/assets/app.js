@@ -1,5 +1,5 @@
 'use strict';
-/* Response Lab Daily 2.0: 110 s simultaneous written cases, configurable speech locale,
+/* Response Lab Daily 2.1: 110 s simultaneous written cases, configurable speech locale,
    0–5 manual coaching, historic progress, recoverable sessions and preserved v1 data.
    Timers use wall-clock deadlines. SpeechRecognition depends on the browser and may use remote services. */
 (()=>{
@@ -15,7 +15,7 @@ const MAX_BYTES=500000;
 const dom=document.getElementById('app');
 const status=document.getElementById('live-status');
 let db={version:2,activeId:null,sessions:{}};
-let ticker=null, speech=null, testSpeech=null, testTranscript='', speechStatus='';
+let ticker=null, speech=null, testSpeech=null, testTranscript='', speechStatus='', duplicateNotice='', pendingPack=null;
 const e=t=>String(t??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const byId=id=>document.getElementById(id);
 const fmt=n=>`${Math.max(0,Math.ceil(n))} s`;
@@ -49,7 +49,8 @@ function adaptSession(s,legacy=false){
  if(!s.coachNotes||typeof s.coachNotes!=='object')s.coachNotes={};
  if(!s.grades||typeof s.grades!=='object')s.grades={};
  if(legacy){
-  s.legacyGrades={...s.grades}; // Do not silently convert 0–4 to 0–5.
+  const oldGrades=Object.fromEntries(Object.entries(s.grades).filter(([,n])=>Number.isInteger(n)&&n>=0&&n<=4));
+  s.legacyGrades=oldGrades; // Les notes 0–4 restent archivées, jamais converties automatiquement.
   s.grades={};
   s.migratedFromV1=true;
   if(s.phase==='reading'||(s.phase==='writing'&&s.timer?.seconds===60)){s.phase='ready';s.timer=null;s.migrationNotice='Ancien cas en cours : réponse partielle conservée, redémarre ce cas avec 110 secondes communes.';}
@@ -68,10 +69,11 @@ function load(){
   if(raw){const found=JSON.parse(raw);if(found?.version===2&&found.sessions&&typeof found.sessions==='object')obj=found;}
   if(!obj){const old=localStorage.getItem(LEGACY_STORE);if(old){const found=JSON.parse(old);if(found?.version===1&&found.sessions&&typeof found.sessions==='object'){obj=found;legacy=true;}}}
   if(!obj)return;
-  const safe=Object.create(null);
-  for(const [id,s] of Object.entries(obj.sessions).slice(-250))try{
+  const safe=Object.create(null);let invalid=0;
+  for(const [id,s] of Object.entries(obj.sessions).slice(-500))try{
    if(s&&s.pack?.session_id===id&&/^[-A-Za-z0-9_]+$/.test(id))safe[id]=adaptSession(s,legacy);
-  }catch(err){console.warn('Séance ignorée, données invalides',id,err);}
+  }catch(err){invalid++;console.warn('Séance ignorée, données invalides',id,err);}
+  if(invalid)notify(invalid+' séance(s) invalides ignorées. Restaure une sauvegarde si nécessaire.');
   db={version:2,activeId:safe[obj.activeId]?obj.activeId:null,sessions:safe};
   if(legacy){save();notify('Anciennes séances préservées. Les notes sur 0–4 sont archivées séparément.');}
  }catch(err){console.warn('Sauvegarde illisible',err);notify('Sauvegarde illisible : les fichiers existants n’ont pas été supprimés.');}
@@ -80,17 +82,58 @@ function save(){
  try{localStorage.setItem(STORE,JSON.stringify(db));return true}
  catch(err){notify('Enregistrement local impossible (stockage saturé ou désactivé). Exporte tes réponses.');console.error(err);return false;}
 }
+// Les actions destructives sont atomiques : on écrit le nouvel état avant de remplacer l'ancien en mémoire.
+function commitState(next){
+ try{localStorage.setItem(STORE,JSON.stringify(next));db=next;return true;}
+ catch(err){notify('Réinitialisation ou restauration impossible : sauvegarde locale indisponible. Rien n’a été effacé.');console.error(err);return false;}
+}
+function freshSession(pack, previous=null){return {pack,cursor:0,phase:'ready',timer:null,answers:{},grades:{},coachNotes:{},axes:{},axisNotes:{},coachSummary:'',speechLocale:previous?.speechLocale&&LOCALES[pack.language].some(([code])=>code===previous.speechLocale)?previous.speechLocale:(pack.language==='EN'?'en-US':'fr-FR'),timerMultiplier:1,createdAt:stamp(),finishedAt:null};}
+function modeLocked(s){return s.cursor>0||s.phase!=='ready'||Object.values(s.answers||{}).some(r=>r?.startedAt||r?.timedOut||r?.selectedIndex!==undefined);}
+function backupSnapshot(sessions=db.sessions){return {schema:BACKUP_SCHEMA,exported_at:stamp(),version:2,sessions};}
+function exportSafetyCopy(label){downloadFile('Response_Lab_Sauvegarde_avant_'+label+'_'+new Date().toISOString().slice(0,10)+'.json',backupSnapshot());}
+function stopAllActivity(){if(speech)endSpeech(true);stopSpeechTest();clearTick();speechStatus='';duplicateNotice='';pendingPack=null;}
+function restartSession(){
+ const s=active();if(!s)return;
+ if(!window.confirm('Recommencer cette séance ? Toutes ses réponses, ses notes et son avancement seront effacés. Une sauvegarde complète sera téléchargée avant la remise à zéro.'))return;
+ try{exportSafetyCopy('recommencement');}catch(err){notify('Impossible de préparer la sauvegarde : '+err.message);return;}
+ if(!window.confirm('La sauvegarde a été proposée au téléchargement. Vérifie qu’elle est bien enregistrée sur ton appareil avant de confirmer la suppression de cet essai.'))return;
+ const key=s.pack.session_id,pack=pendingPack?.session_id===key?pendingPack:s.pack;const next={...db,sessions:{...db.sessions,[key]:freshSession(pack,s)},activeId:key};
+ if(!commitState(next))return;
+ stopAllActivity();render();notify('Séance remise à zéro. Les exercices du fichier importé sont prêts.');
+}
+function resetProgress(){
+ const total=Object.keys(db.sessions).length;
+ if(!total){notify('Aucun progrès à réinitialiser.');return;}
+ if(!window.confirm('RÉINITIALISER LE PROGRÈS DES '+total+' SÉANCES ? Toutes les réponses, notes et statistiques seront effacées. Les fichiers de séances resteront disponibles. Une sauvegarde complète sera téléchargée avant.'))return;
+ try{exportSafetyCopy('reinitialisation');}catch(err){notify('Sauvegarde impossible : aucune donnée effacée. '+err.message);return;}
+ if(!window.confirm('La sauvegarde a été proposée au téléchargement. AS-TU VÉRIFIÉ LE FICHIER ? Confirme uniquement si tu es prêt à perdre les réponses et notes de toutes les séances.'))return;
+ const nextSessions=Object.create(null);
+ for(const [key,s] of Object.entries(db.sessions))nextSessions[key]=freshSession(s.pack,s);
+ const next={version:2,activeId:null,sessions:nextSessions};
+ if(!commitState(next))return;
+ stopAllActivity();render();notify('Progrès des '+total+' séances réinitialisés. Les fichiers de séances sont conservés.');
+}
 function active(){return db.activeId?db.sessions[db.activeId]:null;}
 function steps(pack){return [...pack.quiz.map((x,i)=>({kind:'quiz',number:i+1,...x})),...pack.cases.map((x,i)=>({kind:'case',number:i+1,...x})),...pack.oral.map((x,i)=>({kind:'oral',number:i+1,...x}))];}
 function current(s){return steps(s.pack)[s.cursor]||null;}
 function result(s,item){return s.answers[item.id]||(s.answers[item.id]={id:item.id,kind:item.kind,startedAt:null,elapsedSec:null,timedOut:false});}
 function stopSpeechTest(){if(!testSpeech)return;const rec=testSpeech;testSpeech=null;try{rec.stop();}catch{};}
-function moveTo(id){if(speech)endSpeech(true);stopSpeechTest();db.activeId=id;save();render();}
+function moveTo(id){if(speech)endSpeech(true);stopSpeechTest();duplicateNotice='';pendingPack=null;db.activeId=id;save();render();}
 function create(pack){
  const validated=validatePack(pack),id=validated.session_id;
- if(db.sessions[id]){moveTo(id);notify('Séance existante ouverte : progression conservée.');return;}
+ if(db.sessions[id]){
+  const existing=db.sessions[id];
+  const untouched=existing.cursor===0&&existing.phase==='ready'&&Object.values(existing.answers||{}).every(r=>!r?.startedAt&&!r?.timedOut&&r?.selectedIndex===undefined&&!r?.text&&!r?.transcript);
+  if(untouched){
+   // Un fichier réimporté peut remplacer une bibliothèque vierge, sans effacer de résultats.
+   existing.pack=validated;moveTo(id);notify('Séance déjà importée, encore vierge. Tu peux la commencer normalement.');return;
+  }
+  moveTo(id);pendingPack=validated;
+  duplicateNotice='Ce fichier porte le même identifiant qu’une tentative déjà enregistrée. C’est cette tentative qui est affichée, pas un nouvel entraînement. Pour refaire la séance, utilise « Recommencer cette séance » après sauvegarde.';
+  render();notify(duplicateNotice);return;
+ }
  if(Object.keys(db.sessions).length>=500)throw Error('500 séances atteintes : utilise « Exporter ma sauvegarde », puis archive tes séances.');
- db.sessions[id]={pack:validated,cursor:0,phase:'ready',timer:null,answers:{},grades:{},coachNotes:{},axes:{},axisNotes:{},coachSummary:'',speechLocale:validated.language==='EN'?'en-US':'fr-FR',timerMultiplier:1,createdAt:stamp(),finishedAt:null};db.activeId=id;save();render();notify('Séance importée : 11 exercices prêts.');
+ db.sessions[id]=freshSession(validated);db.activeId=id;duplicateNotice='';pendingPack=null;save();render();notify('Séance importée : 11 exercices prêts.');
 }
 async function importFile(file){
  if(!file)return;
@@ -113,7 +156,7 @@ function stopTimer(){clearTick();const s=active();if(s)s.timer=null;}
 function elapsed(s){return s.timer?Math.min(s.timer.seconds,Math.max(0,(Date.now()-s.timer.startedAt)/1000)):null;}
 function expire(){
  const s=active();if(!s||!s.timer)return;const item=current(s);if(!item||s.timer.stepId!==item.id){stopTimer();return;}
- if(s.phase==='running'&&item.kind==='quiz'){const r=result(s,item);r.selectedIndex=null;r.correct=false;r.timedOut=true;r.elapsedSec=QUIZ_SECONDS;stopTimer();s.phase='review';save();render();notify('Temps écoulé : correction affichée.');return;}
+ if(s.phase==='running'&&item.kind==='quiz'){const r=result(s,item);r.selectedIndex=null;r.correct=false;r.timedOut=true;r.elapsedSec=s.timer.seconds;stopTimer();s.phase='review';save();render();notify('Temps écoulé : correction affichée.');return;}
   if(s.phase==='writing'&&item.kind==='case'){finishCase(true);return;}
  if(s.phase==='speaking'&&item.kind==='oral'){finishOral(true);return;}
  stopTimer();
@@ -196,8 +239,8 @@ function startManualOral(){const s=active(),item=s&&current(s);if(!s||item?.kind
 }
 function buildTimer(s,desc){const r=s.timer;return `<div class="timer-box" role="timer" aria-label="Temps restant, ${fmt(timeRemaining(s))}"><span class="timer-label">${e(desc)}</span><strong id="time-number" class="timer-number">${fmt(timeRemaining(s))}</strong><div class="timer-track"><span id="time-progress" style="width:${Math.max(0,100*timeRemaining(s)/r.seconds)}%"></span></div></div>`;}
 function timerDock(s,item){if(!s.timer)return '';return `<div class="timer-dock" aria-label="Chronomètre en haut à droite">${buildTimer(s,item.kind==='quiz'?'QCM':item.kind==='case'?'Cas écrit':'Réponse orale')}</div>`;}
-function head(s,item){const stepsAll=steps(s.pack),idx=s.cursor;return `${item?timerDock(s,item):''}<div class="topline"><div><p class="eyebrow">${e(s.pack.date)} · ${e(s.pack.language)} · Séance quotidienne</p><h1>${e(s.pack.title)}</h1><p class="muted">${item?`Exercice ${idx+1}/11 · ${item.kind==='quiz'?'Quiz':item.kind==='case'?'Cas écrit':'Confrontation orale'} ${item.number}`:'Séance terminée'}</p></div><div class="head-actions"><button class="btn ghost" data-action="export">↓ Réponses</button><button class="btn ghost" data-action="home">Mes séances</button></div></div><div class="progressbar" aria-label="Avancement de la séance"><span style="width:${(progress(s)/11)*100}%"></span></div><div class="stepbar"><span class="step-label">${progress(s)} sur 11 exercices terminés</span><span class="tag">${item?e(item.skill):'Terminé'}</span></div>${s.phase==='ready'?`<div class="prep-settings"><label>Aménagement du temps <select id="time-mode" class="input"><option value="1" ${s.timerMultiplier===1?'selected':''}>Standard · temps prévu</option><option value="2" ${s.timerMultiplier===2?'selected':''}>×2 · entraînement adapté</option><option value="10" ${s.timerMultiplier===10?'selected':''}>×10 · accessibilité</option></select></label></div>`:''}`;}
-function renderQuiz(s,item){const r=result(s,item);let html=`<div class="panel"><div class="info-row"><span class="tag">QCM ${item.number}/6</span><span class="tag gray">40 secondes</span></div>`;
+function head(s,item){const idx=s.cursor;return `${item?timerDock(s,item):''}${duplicateNotice?`<div class="notice amber" role="status">${e(duplicateNotice)}</div>`:''}<div class="topline"><div><p class="eyebrow">${e(s.pack.date)} · ${e(s.pack.language)} · Séance quotidienne</p><h1>${e(s.pack.title)}</h1><p class="muted">${item?`Exercice ${idx+1}/11 · ${item.kind==='quiz'?'Quiz':item.kind==='case'?'Cas écrit':'Confrontation orale'} ${item.number}`:'Séance terminée'}</p></div><div class="head-actions"><button class="btn ghost" data-action="export">↓ Réponses</button><button class="btn ghost" data-action="home">Mes séances</button></div></div><div class="progressbar" aria-label="Avancement de la séance"><span style="width:${(progress(s)/11)*100}%"></span></div><div class="stepbar"><span class="step-label">${progress(s)} sur 11 exercices terminés</span><span class="tag">${item?e(item.skill):'Terminé'}</span></div>${s.phase==='ready'?`<div class="prep-settings"><label>Aménagement du temps <select id="time-mode" class="input" ${modeLocked(s)?'disabled':''}><option value="1" ${s.timerMultiplier===1?'selected':''}>Standard · temps prévu</option><option value="2" ${s.timerMultiplier===2?'selected':''}>×2 · entraînement adapté</option><option value="10" ${s.timerMultiplier===10?'selected':''}>×10 · accessibilité</option></select></label>${modeLocked(s)?'<p class="small muted">Durée verrouillée après le premier exercice pour permettre un suivi comparable.</p>':''}</div>`:''}`;}
+function renderQuiz(s,item){const r=s.answers[item.id]||{};let html=`<div class="panel"><div class="info-row"><span class="tag">QCM ${item.number}/6</span><span class="tag gray">40 secondes</span></div>`;
  if(s.phase==='ready')html+=`<h2 style="margin-top:16px">Question de raisonnement rapide</h2><p class="muted">La question apparaît au démarrage du chronomètre. Choisis une seule réponse ; la correction s’affiche immédiatement.</p><div class="actions"><button class="btn primary" data-action="quiz-start">Commencer la question · 40 s</button></div>`;
  else {html+=`<div class="question"><h2>${e(item.question)}</h2></div>`;
   if(s.phase==='running')html+=`<div class="choice-grid">${item.options.map((opt,i)=>`<button class="choice" data-action="quiz-choose" data-index="${i}"><span class="letter">${'ABCD'[i]}</span>${e(opt)}</button>`).join('')}</div>`;
@@ -210,7 +253,7 @@ function renderQuiz(s,item){const r=result(s,item);let html=`<div class="panel">
 }
 function stressSelector(r){return `<div style="max-width:300px;margin:17px 0"><label class="field-label" for="stress-report">Pression ressentie (facultatif)</label><select id="stress-report" class="input"><option value="">Non renseignée</option>${Array.from({length:11},(_,n)=>`<option value="${n}" ${r.stressReported===n?'selected':''}>${n}/10</option>`).join('')}</select><p class="small muted">Ton ressenti est déclaré par toi, jamais déduit de la voix.</p></div>`;}
 function renderCase(s,item){
- const r=result(s,item);
+ const r=s.answers[item.id]||{};
  let html=`<div class="panel case-panel"><div class="info-row"><span class="tag">Cas écrit ${item.number}/2</span><span class="tag gray">110 s · contexte et réponse simultanés</span></div><h2>${e(item.title)}</h2>`;
  if(s.phase==='ready')html+=`<p class="muted">Le contexte et l'écriture restent accessibles ensemble pendant ${CASE_SECONDS*(s.timerMultiplier||1)} secondes. Tu peux rédiger dès la première seconde.</p><div class="actions"><button class="btn primary" data-action="case-start">Commencer le cas · ${CASE_SECONDS*(s.timerMultiplier||1)} s</button></div>`;
  if(s.phase==='writing'){
@@ -221,7 +264,7 @@ function renderCase(s,item){
  if(s.phase==='review')html+=`<div class="feedback"><strong>Réponse conservée</strong><p>Durée utilisée : ${r.elapsedSec==null?'—':r.elapsedSec+' s'} · ${r.timedOut?'Temps écoulé':'Fin volontaire'}. Correction détaillée après export vers ChatGPT.</p></div><div class="answer-text">${e(r.text?.trim()||'Aucune réponse écrite.')}</div>${stressSelector(r)}<div class="actions"><button class="btn primary" data-action="next">Exercice suivant →</button></div>`;
  return html+'</div>';
 }
-function renderOral(s,item){const r=result(s,item);let html=`<div class="panel"><div class="info-row"><span class="tag">Confrontation ${item.number}/3</span><span class="tag gray">40 secondes de réponse</span></div><h2 style="margin-top:16px">Réactivité orale</h2><div class="question"><span class="eyebrow">Contexte</span><p>${e(item.context)}</p><span class="eyebrow">Interlocuteur</span><h3 style="margin-bottom:0">« ${e(item.confrontation)} »</h3></div>`;
+function renderOral(s,item){const r=s.answers[item.id]||{};let html=`<div class="panel"><div class="info-row"><span class="tag">Confrontation ${item.number}/3</span><span class="tag gray">40 secondes de réponse</span></div><h2 style="margin-top:16px">Réactivité orale</h2><div class="question"><span class="eyebrow">Contexte</span><p>${e(item.context)}</p><span class="eyebrow">Interlocuteur</span><h3 style="margin-bottom:0">« ${e(item.confrontation)} »</h3></div>`;
  if(s.phase==='ready')html+=`<p class="muted">Lis la confrontation avant de commencer. Les ${ORAL_SECONDS*(s.timerMultiplier||1)} secondes ne démarrent qu’après l'activation effective de la reconnaissance vocale.</p><div class="speech-pref"><label class="field-label" for="speech-locale">Langue et accent de transcription</label><select id="speech-locale" class="input">${LOCALES[s.pack.language].map(([code,label])=>`<option value="${code}" ${s.speechLocale===code?'selected':''}>${e(label)}</option>`).join('')}</select><span class="small muted">Choisis l'accent que tu parles avant d'activer le micro.</span><div class="actions"><button class="btn subtle" data-action="${testSpeech?'speech-test-stop':'speech-test'}">${testSpeech?'■ Arrêter le test':'🎙 Tester la dictée (sans chronomètre)'}</button></div>${testTranscript?`<p class="small"><strong>Résultat du test :</strong> ${e(testTranscript)}</p>`:''}</div><div class="actions"><button class="btn primary" data-action="speech-start" ${testSpeech?'disabled':''}>🎙 Activer le micro et démarrer · ${ORAL_SECONDS*(s.timerMultiplier||1)} s</button><button class="btn ghost" data-action="manual-start">Mode sans micro</button></div><div class="notice amber small">La dictée dépend de ton navigateur et peut utiliser un service distant. Une transcription n'est pas une note de prononciation. Le texte brut sera conservé.</div>${speechStatus?`<div class="status error" role="alert" style="margin-top:12px">${e(speechStatus)}</div>`:''}`;
  if(s.phase==='arming')html+=`<div class="status">Autorisation du microphone en attente… Aucun temps n’est encore comptabilisé.</div><div class="actions"><button class="btn ghost" data-action="speech-cancel">Annuler et choisir le mode sans micro</button></div>`;
  if(s.phase==='speaking'){
@@ -255,7 +298,7 @@ function renderHistory(){
  <h3>Évolution des 5 repères sur 0–5</h3><p class="small muted">Moyennes par compétence sur les 7, 14 et 30 dernières séances <strong>terminées au temps standard</strong>. Les modes ×2 et ×10 restent archivés, sans être mélangés aux moyennes. « — » signifie qu'aucune note n'a été saisie ; les anciennes notes sur 0–4 restent archivées et sont exclues de ces moyennes. La variation compare les 7 dernières séances aux 7 précédentes.</p>
  <div class="table-scroll"><table class="score-table"><thead><tr><th>Compétence</th><th>7 séances</th><th>14 séances</th><th>30 séances</th><th>Variation</th></tr></thead><tbody>${trendRows(comparable)}</tbody></table></div>
  ${done.length?`<div class="mini-history" role="list">${done.slice(0,30).map(x=>{const grade=sessionAxisMean(x);return `<div class="history-line" role="listitem"><span><strong>${e(x.pack.date)}</strong><small>${e(x.pack.title)} · ${e(x.pack.language)}${x.timerMultiplier!==1?' · temps ×'+x.timerMultiplier:''}</small></span><span>QCM ${quizScore(x)}/6</span><span>${grade===null?'Repères incomplets':grade.toFixed(1)+'/5'}</span><button class="btn subtle" data-action="open" data-id="${e(x.pack.session_id)}">Consulter</button></div>`;}).join('')}</div>`:'<p class="muted">Les résultats apparaîtront ici après ta première séance terminée.</p>'}
- <div class="actions"><button class="btn subtle" data-action="backup">↓ Sauvegarder toutes mes séances</button><label class="btn subtle backup-label">↥ Restaurer une sauvegarde<input type="file" id="backup-upload" accept=".json,application/json" aria-label="Restaurer une sauvegarde JSON"></label></div><p class="small muted">Stockage uniquement sur cet appareil. Le fichier de sauvegarde est indispensable pour changer de navigateur ou de téléphone. Une restauration n'écrase pas les séances déjà présentes.</p></section>`;
+ <div class="actions"><button class="btn subtle" data-action="backup">↓ Sauvegarder toutes mes séances</button><label class="btn subtle backup-label">↥ Restaurer une sauvegarde<input type="file" id="backup-upload" accept=".json,application/json" aria-label="Restaurer une sauvegarde JSON"></label><button class="btn warn" data-action="reset-progress">↻ Réinitialiser le progrès</button></div><p class="small muted">La réinitialisation efface réponses et notes, mais garde les fichiers de séances. Elle demande confirmation et télécharge une sauvegarde. Une restauration peut remplacer les progrès existants uniquement avec ton accord.</p></section>`;
 }
 function packHome(){
  const today=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
@@ -272,8 +315,8 @@ function renderFinished(s){
  const items=steps(s.pack),graded=items.map(i=>s.grades[i.id]).filter(n=>Number.isInteger(n)&&n>=0&&n<=5);
  const axisGraded=AXES.map(([key])=>axisScore(s,key)).filter(n=>n!==null);
  let html=head(s,null)+`<section class="panel completed-hero"><div class="info-row"><span class="tag green">11 exercices terminés</span><span class="tag">QCM · ${quizScore(s)}/6 corrects</span></div><h2>Bilan de ta séance</h2><p class="muted">Télécharge le fichier de tes 11 réponses et joins-le à ChatGPT. Je te fournirai des explications supplémentaires pour les QCM incorrects, une correction des deux cas écrits, une analyse des trois confrontations et <strong>cinq repères notés sur 0 à 5</strong>. Recopie ensuite ces notes ci-dessous : aucune note qualitative n'est inventée par l'application.</p>
- <div class="actions"><button class="btn primary" data-action="export">↓ Exporter les 11 réponses</button><button class="btn ghost" data-action="home">Mes séances et progrès</button></div><div class="file-box small"><strong>Format à demander au coach :</strong> correction par identifiant, justificatif des erreurs QCM, correction écrite, analyse des confrontations, cinq repères sur 0–5, une priorité de travail pour demain.</div>
- ${s.migratedFromV1?'<div class="notice amber">Cette séance vient de l’ancienne version. Ses notes 0–4 sont préservées séparément, sans conversion automatique ; les notes 0–5 ci-dessous sont à ressaisir si tu veux les comparer aux nouvelles séances.</div>':''}</section>
+ <div class="actions"><button class="btn primary" data-action="export">↓ Exporter les 11 réponses</button><button class="btn ghost" data-action="home">Mes séances et progrès</button><button class="btn warn" data-action="restart-session">↻ Recommencer cette séance</button></div><div class="file-box small"><strong>Format à demander au coach :</strong> correction par identifiant, justificatif des erreurs QCM, correction écrite, analyse des confrontations, cinq repères sur 0–5, une priorité de travail pour demain.</div>
+ ${s.migratedFromV1?`<div class="notice amber">Cet <strong>essai enregistré localement</strong> a commencé avec Daily 1.0. Importer un nouveau fichier portant le même identifiant rouvre cet ancien essai. ${Object.keys(s.legacyGrades||{}).length?'Les notes historiques sur 0–4 sont archivées séparément.':'Aucune ancienne note sur 0–4 n’était renseignée.'} Pour refaire les exercices selon les règles actuelles, choisis « Recommencer cette séance ».</div>`:''}</section>
  <section class="panel coaching-panel"><div class="section-heading"><div><span class="eyebrow">Retour du coach</span><h2>Mes cinq repères d'amélioration</h2></div><span class="tag">Échelle 0–5</span></div><p class="muted small" id="axis-summary">${axisGraded.length}/5 repères notés${axisGraded.length?' · moyenne '+meanLabel(axisGraded):''}. Les valeurs non renseignées ne comptent pas dans les moyennes.</p><div class="axis-grid">`;
  for(let n=0;n<AXES.length;n++){
   const [key,title]=AXES[n],rating=axisScore(s,key),comment=s.axisNotes?.[key]||'';
@@ -314,12 +357,25 @@ function answersFile(s){
 function downloadFile(filename,payload){const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
 function exportAnswers(){const s=active();if(!s){notify('Aucune séance active à exporter.');return;}
  downloadFile(`Response_Lab_Reponses_${s.pack.session_id}.json`,answersFile(s));notify(s.phase==='finished'?'Fichier de réponses téléchargé : joins-le au coach.':'Export de secours téléchargé : séance incomplète clairement signalée.');}
-function exportBackup(){downloadFile('Response_Lab_Daily_Sauvegarde_'+new Date().toISOString().slice(0,10)+'.json',{schema:BACKUP_SCHEMA,exported_at:stamp(),version:2,sessions:db.sessions});notify('Sauvegarde complète exportée. Conserve ce fichier en lieu sûr.');}
-async function importBackup(file){if(!file)return;if(file.size>10000000)throw Error('Sauvegarde trop volumineuse (maximum 10 Mo).');let data;try{data=JSON.parse(await file.text())}catch{throw Error('Fichier JSON invalide.');}
- if(data?.schema!==BACKUP_SCHEMA||!data.sessions||typeof data.sessions!=='object'||Array.isArray(data.sessions))throw Error('Format de sauvegarde invalide.');
- const additions=Object.create(null);let skipped=0;for(const [id,s] of Object.entries(data.sessions)){if(!/^[-A-Za-z0-9_]+$/.test(id)||s?.pack?.session_id!==id)throw Error('Séance de sauvegarde invalide : '+id);const safe=adaptSession(s);if(db.sessions[id]){skipped++;continue;}additions[id]=safe;}
- if(Object.keys(db.sessions).length+Object.keys(additions).length>500)throw Error('La sauvegarde dépasserait la limite de 500 séances.');
- db.sessions={...db.sessions,...additions};if(!save())throw Error('Espace insuffisant pour sauvegarder les données restaurées.');render();notify(Object.keys(additions).length+' séance(s) restaurée(s), '+skipped+' déjà présente(s) conservée(s).');}
+function exportBackup(){downloadFile('Response_Lab_Daily_Sauvegarde_'+new Date().toISOString().slice(0,10)+'.json',backupSnapshot());notify('Sauvegarde complète exportée. Conserve ce fichier en lieu sûr.');}
+async function importBackup(file){
+ if(!file)return;
+ if(file.size>10000000)throw Error('Sauvegarde trop volumineuse (maximum 10 Mo).');
+ let data;try{data=JSON.parse(await file.text())}catch{throw Error('Fichier JSON invalide.');}
+ if(data?.schema!==BACKUP_SCHEMA||data.version!==2||!data.sessions||typeof data.sessions!=='object'||Array.isArray(data.sessions))throw Error('Format de sauvegarde invalide.');
+ const incoming=Object.create(null);
+ for(const [id,raw] of Object.entries(data.sessions)){
+  if(!/^[-A-Za-z0-9_]+$/.test(id)||['__proto__','constructor','prototype'].includes(id)||raw?.pack?.session_id!==id)throw Error('Identifiant de sauvegarde invalide : '+id);
+  incoming[id]=adaptSession(JSON.parse(JSON.stringify(raw)));
+ }
+ const conflicts=Object.keys(incoming).filter(id=>Boolean(db.sessions[id]));
+ if(conflicts.length&&!window.confirm(conflicts.length+' séance(s) déjà présentes. Remplacer leurs résultats par la sauvegarde ? Les modifications actuelles seront écrasées pour ces séances. Annuler pour tout conserver.')){notify('Restauration annulée. Aucune donnée modifiée.');return;}
+ const sessions=Object.assign(Object.create(null),db.sessions,incoming);
+ if(Object.keys(sessions).length>500)throw Error('La sauvegarde dépasserait la limite de 500 séances.');
+ const next={...db,sessions};
+ if(!commitState(next))return;
+ stopAllActivity();render();notify(Object.keys(incoming).length+' séance(s) restaurée(s), dont '+conflicts.length+' remplacée(s) avec accord.');
+}
 function resumeTimers(){const s=active();if(!s)return;
  // A microphone permission dialog cannot be resumed after reload; keep the step ready instead of counting imagined time.
  if(s.phase==='arming'){s.phase='ready';s.timer=null;speechStatus='Micro interrompu par le rechargement. Recommence quand tu es prêt.';save();}
@@ -331,6 +387,8 @@ function resumeTimers(){const s=active();if(!s)return;
 async function handleAction(btn){const a=btn.dataset.action,s=active();
  if(a==='home'){if(speech)endSpeech(true);stopSpeechTest();clearTick();db.activeId=null;save();render();return;}
  if(a==='backup'){exportBackup();return;}
+ if(a==='reset-progress'){resetProgress();return;}
+ if(a==='restart-session'){restartSession();return;}
  if(a==='export'){exportAnswers();return;}
  if(a==='demo'){try{const r=await fetch('seance_2026-11-07.json?v=2.0.0');if(!r.ok)throw Error('Séance modèle introuvable.');create(await r.json())}catch(err){notify('Impossible de charger la séance modèle : '+err.message)}return;}
  if(a==='open'){moveTo(btn.dataset.id);resumeTimers();render();return;}
@@ -355,7 +413,7 @@ function bind(){
   if(el?.id==='backup-upload'){importBackup(el.files?.[0]).catch(err=>notify('Restauration refusée : '+err.message)).finally(()=>{el.value=''});return;}
   const s=active();if(!s)return;
   if(el.id==='stress-report'&&s.phase==='review'){result(s,current(s)).stressReported=el.value===''?null:Number(el.value);save();return;}
-  if(el?.id==='time-mode'&&s.phase==='ready'){const v=Number(el.value);if([1,2,10].includes(v)){s.timerMultiplier=v;save();render();}return;}
+  if(el?.id==='time-mode'&&s.phase==='ready'&&!modeLocked(s)){const v=Number(el.value);if([1,2,10].includes(v)){s.timerMultiplier=v;save();render();}return;}
   if(el?.id==='speech-locale'&&s.phase==='ready'){if(LOCALES[s.pack.language].some(([code])=>code===el.value)){s.speechLocale=el.value;save();}return;}
   if(s.phase!=='finished')return;
   if(el.classList.contains('grade-field')){const v=el.value===''?null:Number(el.value);if(v!==null&&(!Number.isInteger(v)||v<0||v>5))return;s.grades[el.dataset.id]=v;save();const gr=Object.values(s.grades).filter(n=>Number.isInteger(n)&&n>=0&&n<=5),sum=byId('grade-summary');if(sum)sum.textContent=gr.length+'/11 notes renseignées'+(gr.length?' · moyenne indicative '+meanLabel(gr):'')+'. Les bonnes réponses QCM restent distinctes.';notify('Note enregistrée : '+el.dataset.id);return;}

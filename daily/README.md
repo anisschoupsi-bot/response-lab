@@ -1,3 +1,37 @@
+# Response Lab Daily 2.1 — Correctif de cohérence et de sécurité
+
+L'application conserve la structure de 6 QCM, 2 cas écrits (110 secondes simultanées) et 3 confrontations orales (40 secondes). Chronomètre en haut à droite. Cinq repères sur **0 à 5**.
+
+## Nouveautés 2.1
+
+- Réimporter un fichier possédant le même `session_id` n'écrase jamais un essai réalisé. L'application indique clairement qu'elle ouvre un essai enregistré localement et propose **« Recommencer cette séance »**.
+- Une séance **vierge** peut être réimportée avec le même identifiant et être mise à jour sans erreur ni avertissement trompeur.
+- Sur le bilan : **« Recommencer cette séance »** efface les réponses, notes, axes et avancement de cet essai, tout en conservant le scénario.
+- À l'accueil, dans « Historique et progression » : **« Réinitialiser le progrès »** remet à zéro toutes les séances, tout en conservant les fichiers importés. Le compteur d'historique revient à zéro.
+- **Pour chaque effacement :** première confirmation, proposition automatique de téléchargement d'une sauvegarde complète, seconde confirmation après vérification manuelle du téléchargement. Si la sauvegarde échoue ou si la persistance locale échoue, l'effacement n'est pas effectué.
+- **Restaurer une sauvegarde** détecte désormais les séances déjà présentes et demande un accord explicite avant de les remplacer (une annulation n'altère aucune donnée). Cela rend possible une restauration après remise à zéro.
+- Les notes 0–4 archivées des vrais anciens essais ne sont pas converties automatiquement en notes 0–5. La mention affichée distingue **l'essai local ancien** du **fichier de séance nouvellement importé**.
+- Les composants d'affichage ne créent plus de réponse vide à eux seuls ; les modes de temps sont verrouillés après le début du premier exercice, et l'expiration d'un QCM à durée ×2/×10 conserve sa limite réelle.
+- Le chargement historique gère jusqu'à 500 séances au lieu d'écarter silencieusement les plus anciennes à partir de 250.
+
+**Important :** les sauvegardes sont locales au navigateur, sans synchronisation. Le navigateur peut refuser un téléchargement de sauvegarde : la deuxième confirmation oblige l'utilisateur à vérifier qu'il possède réellement le fichier avant tout effacement. La transcription dépend du navigateur et peut utiliser un service externe. Le test du micro physique et de la qualité de reconnaissance doit être fait sur l'appareil de l'utilisateur.
+
+## Utilisation et tests
+
+Voir [`GUIDE_UTILISATION.md`](GUIDE_UTILISATION.md) et [`AUDIT_V2_1.md`](AUDIT_V2_1.md). Tests :
+
+```bash
+node --check assets/app.js
+node tests/test_flow.js
+node tests/test_failures.js
+node tests/test_migration_backup.js
+node tests/test_reset_integrity.js
+node tests/test_assets.js
+python tests/test_browser_ui.py  # Playwright + Chromium requis
+```
+
+## Versions antérieures
+
 # Response Lab Daily 2.0 — entraînement cognitif et verbal quotidien
 
 Application web installable (PWA) et utilisable gratuitement, sans clé d'API. **Chemin GitHub Pages prévu :** `/response-lab/daily/`. Le déploiement est distinct des anciennes versions v2.x et v3.x, mais la refonte remplace la version Daily 1.0 à cette adresse.

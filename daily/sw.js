@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='response-lab-daily-v2-20261107';
-const ASSETS=['./','./index.html','./assets/styles.css?v=2.0.0','./assets/app.js?v=2.0.0','./icon.svg','./manifest.webmanifest','./seance_2026-11-07.json'];
+const CACHE='response-lab-daily-v2-1-20261107';
+const ASSETS=['./','./index.html','./assets/styles.css?v=2.1.0','./assets/app.js?v=2.1.0','./icon.svg','./manifest.webmanifest','./seance_2026-11-07.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('response-lab-daily-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

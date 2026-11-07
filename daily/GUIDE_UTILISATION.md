@@ -39,3 +39,14 @@ La page d'accueil affiche les résultats passés et les tendances sur les 7/14/3
 Utilise régulièrement « Sauvegarder toutes mes séances ». Pour changer d'appareil, transfère ce fichier JSON et utilise « Restaurer une sauvegarde ». Si une séance a été interrompue, clique sur « ↓ Réponses » en haut de la séance pour sauvegarder ce qui a été fait ; le fichier indique clairement qu'elle n'est pas terminée.
 
 Pour un aménagement de temps, choisis ×2 ou ×10 avant le démarrage. La durée ajustée sera conservée avec la séance et ne faussera pas les statistiques à temps standard.
+
+
+## 2.1 — Recommencer ou remettre à zéro
+
+Dans le bilan d'une séance terminée, clique sur **« Recommencer cette séance »** pour repartir à zéro pour cette séance uniquement. Si tu importes un fichier portant un identifiant déjà présent, l'application ouvre l'ancien essai, ne le confond pas avec le nouveau et te propose cette action.
+
+À l'accueil, dans **Historique et progression**, clique sur **« Réinitialiser le progrès »** pour effacer le progrès de l'ensemble des séances en conservant leurs fichiers d'exercices. L'application demande une confirmation, propose automatiquement une sauvegarde, puis exige une deuxième confirmation. **Vérifie le téléchargement avant de confirmer**. Si tu annules, aucune donnée n'est effacée.
+
+Pour restaurer, utilise **« Restaurer une sauvegarde »**. Si des séances existent déjà, l'application demande expressément si elle peut remplacer leurs résultats. Cette opération permet de récupérer un historique précédemment réinitialisé.
+
+Le message « ancienne version » a été précisé : il correspond uniquement à un essai migré de Daily 1.0, et non au nouveau fichier de séance téléchargé. Les anciennes notes /4 restent archivées, les nouvelles notes /5 restent séparées.
