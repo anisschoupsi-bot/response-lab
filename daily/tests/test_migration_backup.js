@@ -34,7 +34,7 @@ function harness(store={}){
  check(h.app.innerHTML.includes('Historique et progression'),'history visible on home');
  check(h.app.innerHTML.includes('7 séances')&&h.app.innerHTML.includes('30 séances'),'rolling history windows');
  await h.click('open',{id:pack.session_id});
- check(h.app.innerHTML.includes('ancienne note 4/4'),'legacy grade visible in detail');
+ check(!h.app.innerHTML.includes('ancienne note 4/4'),'legacy detail hidden but preserved in backup');
  check(h.app.innerHTML.includes('Mes cinq repères'), 'five axes render');
  h.change('axis-grade-0','5','axis-grade',{axis:'analyse'});
  h.change('axis-grade-1','3','axis-grade',{axis:'raisonnement'});
