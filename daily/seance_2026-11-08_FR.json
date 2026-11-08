@@ -1,0 +1,165 @@
+{
+  "schema": "response-lab-daily-session-v1",
+  "session_id": "RL-D-2026-11-08-FR-01",
+  "date": "2026-11-08",
+  "language": "FR",
+  "title": "Jour 2 — Décider avec lucidité, réagir avec précision",
+  "objectives": [
+    "Isoler le fait décisif parmi plusieurs informations.",
+    "Distinguer preuve, hypothèse et incertitude.",
+    "Arbitrer sous contrainte de temps sans promettre l'impossible.",
+    "Formuler une réponse orale concise face à une objection."
+  ],
+  "quiz": [
+    {
+      "id": "J2-Q1",
+      "skill": "attention",
+      "question": "Une intervention doit commencer à 16 h. Le technicien et le matériel sont disponibles, mais l'autorisation d'accès au site n'est toujours pas délivrée. Que faut-il vérifier d'abord ?",
+      "options": [
+        "La couleur des équipements",
+        "L'heure exacte de départ du technicien",
+        "L'obtention de l'autorisation d'accès",
+        "Le compte rendu de la dernière réunion"
+      ],
+      "correct_index": 2,
+      "explanation": "L'autorisation est la condition bloquante. Les autres préparatifs ne suffisent pas à permettre l'intervention.",
+      "option_explanations": [
+        "Aucune contrainte du scénario ne dépend de la couleur des équipements.",
+        "L'horaire peut compter ensuite, mais sans autorisation le technicien ne pourra pas intervenir.",
+        "Exact : l'accès est le prérequis indispensable non encore satisfait.",
+        "Rien ne montre que ce compte rendu débloque l'accès."
+      ]
+    },
+    {
+      "id": "J2-Q2",
+      "skill": "raisonnement",
+      "question": "Depuis la mise en place d'un outil, les erreurs diminuent. L'équipe a également été formée la même semaine. Quelle conclusion est justifiée ?",
+      "options": [
+        "L'outil est forcément l'unique cause de la baisse",
+        "La formation n'a eu aucun effet",
+        "La baisse est constatée, mais sa cause ne peut pas être attribuée à l'outil seul",
+        "Le nombre d'erreurs diminuera nécessairement encore le mois prochain"
+      ],
+      "correct_index": 2,
+      "explanation": "Deux changements simultanés empêchent d'attribuer l'effet observé à une seule cause.",
+      "option_explanations": [
+        "On ne peut pas isoler l'effet de l'outil puisque la formation a également changé.",
+        "Aucune donnée ne permet d'écarter le rôle de la formation.",
+        "Exact : la conclusion distingue l'observation de son explication causale.",
+        "Une observation passée ne garantit pas une évolution future."
+      ]
+    },
+    {
+      "id": "J2-Q3",
+      "skill": "decision",
+      "question": "Tu as 48 unités en stock. Deux commandes doivent être livrées aujourd'hui : 30 et 24 unités. Quelle première démarche est la plus robuste ?",
+      "options": [
+        "Promettre les 54 unités et régler le manque plus tard",
+        "Servir le premier client sans rien annoncer au second",
+        "Calculer les 6 unités manquantes, vérifier les engagements et proposer un arbitrage transparent",
+        "Reporter d'office les deux livraisons au lendemain"
+      ],
+      "correct_index": 2,
+      "explanation": "La demande totale est 54 unités pour 48 disponibles. Il faut identifier le déficit et arbitrer selon les engagements.",
+      "option_explanations": [
+        "Une promesse impossible fragilise la confiance.",
+        "Cette action néglige la contrainte du second client.",
+        "Exact : tu identifies le déficit puis décides en tenant compte des priorités réelles.",
+        "Reporter tout est disproportionné puisque 48 unités sont disponibles."
+      ]
+    },
+    {
+      "id": "J2-Q4",
+      "skill": "inhibition",
+      "question": "Un collègue interrompt ta présentation : « Ton estimation est complètement fausse. » Il n'a montré aucun chiffre. Quelle réponse préserve le mieux le raisonnement ?",
+      "options": [
+        "« Tu critiques toujours mon travail. »",
+        "« Quelle hypothèse ou quelle donnée te semble incorrecte ? »",
+        "« J'ai raison, ce n'est pas discutable. »",
+        "Retirer aussitôt toute l'estimation"
+      ],
+      "correct_index": 1,
+      "explanation": "Une question ciblée transforme une critique générale en point vérifiable sans réaction impulsive.",
+      "option_explanations": [
+        "Cela personnalise le conflit au lieu d'examiner les faits.",
+        "Exact : tu demandes un élément précis à confronter à ton estimation.",
+        "Une certitude proclamée ne remplace pas la vérification.",
+        "Retirer la proposition sans examiner la critique serait prématuré."
+      ]
+    },
+    {
+      "id": "J2-Q5",
+      "skill": "flexibilite",
+      "question": "Tu prévois une réunion en visioconférence. Dix minutes avant, la connexion est coupée ; une petite salle devient disponible sur place. Quelle adaptation est la plus pertinente ?",
+      "options": [
+        "Conserver la visioconférence malgré la coupure",
+        "Annuler sans examiner les alternatives",
+        "Vérifier qui peut rejoindre la salle et prévoir un compte rendu pour les absents",
+        "Commencer dans la salle sans prévenir personne"
+      ],
+      "correct_index": 2,
+      "explanation": "Le nouveau fait rend le plan initial inopérant mais ouvre une autre option, à valider et à communiquer.",
+      "option_explanations": [
+        "Sans connexion, l'option distante est indisponible.",
+        "L'annulation écarte trop vite une solution possible.",
+        "Exact : tu testes la faisabilité et préserves l'information des personnes absentes.",
+        "La réunion perdrait des participants qui ignorent le changement."
+      ]
+    },
+    {
+      "id": "J2-Q6",
+      "skill": "memoire-de-travail",
+      "question": "Il reste 60 demandes à traiter. Une personne peut en résoudre 15 par heure durant les 3 prochaines heures. Vingt demandes sont prioritaires et passent en premier. Combien de demandes resteront après ces 3 heures si la capacité est utilisée entièrement ?",
+      "options": [
+        "10",
+        "15",
+        "20",
+        "25"
+      ],
+      "correct_index": 1,
+      "explanation": "15 × 3 = 45 demandes traitées ; 60 − 45 = 15 restantes. La priorité change l'ordre, pas la capacité.",
+      "option_explanations": [
+        "60 − 45 ne donne pas 10.",
+        "Exact : 15 demandes restent après trois heures.",
+        "Les 20 prioritaires influencent l'ordre de traitement, pas le total restant.",
+        "La capacité annoncée permet de traiter 45 demandes, pas 35."
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "J2-E1",
+      "skill": "analyse-et-decision",
+      "title": "Incident juste avant une démonstration",
+      "context": "À 14 h, une démonstration client est prévue pour 16 h. Un test découvre un défaut touchant une fonction importante. Le corriger exige au moins trois heures, mais une démonstration limitée aux fonctions fiables reste possible. Le commercial veut conserver le rendez-vous sans informer le client. Le technicien estime qu'il serait risqué de masquer le défaut. Le client utilisera cette démonstration pour préparer une décision, pas pour déployer le produit aujourd'hui.",
+      "task": "Tu as 110 secondes au total pour lire et rédiger. Décide quoi faire à 16 h, justifie ton choix, traite le risque de transparence et propose un message concret au client."
+    },
+    {
+      "id": "J2-E2",
+      "skill": "priorisation-et-adaptation",
+      "title": "Nouvelle information, nouvelle priorité",
+      "context": "Tu coordonnes deux demandes urgentes et une seule personne est disponible. La demande A devait être réglée avant 17 h pour éviter un retard administratif ; B pouvait initialement attendre demain. À 15 h, tu apprends que B est une panne qui empêche quinze collègues de travailler. En parallèle, le destinataire de A confirme qu'un traitement à 18 h serait acceptable, à condition d'être prévenu immédiatement.",
+      "task": "En 110 secondes, propose un nouvel ordre de priorité, explique les critères utilisés et rédige une courte communication qui sécurise les deux engagements."
+    }
+  ],
+  "oral": [
+    {
+      "id": "J2-O1",
+      "skill": "clarification-et-synthese",
+      "context": "Tu présentes une recommandation à une responsable. Tu disposes d'éléments concrets mais sa critique est encore vague.",
+      "confrontation": "« Votre analyse est trop théorique. Je ne vois pas ce que cela change concrètement. Expliquez-moi votre proposition sans perdre de temps. »"
+    },
+    {
+      "id": "J2-O2",
+      "skill": "assertivite-et-negociation",
+      "context": "Tu annonces à un client un délai vérifié. Accélérer sans préparation ferait monter le risque d'erreur.",
+      "confrontation": "« Si vous étiez vraiment compétent, vous pourriez livrer dès demain. Je ne veux pas d'excuses, je veux un engagement. »"
+    },
+    {
+      "id": "J2-O3",
+      "skill": "flexibilite-et-posture",
+      "context": "Tu avais proposé de commencer immédiatement un projet. Une vérification révèle qu'une donnée indispensable ne sera disponible que dans deux jours.",
+      "confrontation": "« Vous nous disiez de démarrer aujourd'hui, et maintenant vous changez d'avis ? Dites-moi exactement ce qu'on fait aujourd'hui et ce qu'on reporte. »"
+    }
+  ]
+}
