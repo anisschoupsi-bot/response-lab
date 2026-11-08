@@ -94,6 +94,11 @@ async function run(){
  check(app.innerHTML.includes('Mes cinq repères d'), 'rubric shown');
  check(exported.answers.filter(x=>x.type==='oral').every(x=>x.transcript_raw.length>0),'transcripts exported');
  check(exported.answers.filter(x=>x.type==='quiz').length===6,'qcm answers exported');
+ for(const q of exported.answers.filter(x=>x.type==='quiz')){
+  check(q.displayed_options?.length===4,'four displayed QCM choices exported');
+  check(q.displayed_options['ABCD'.indexOf(q.displayed_correct_letter)]===q.correct_answer,'correct displayed letter maps to exported answer');
+  if(q.chosen_index!==null)check(q.displayed_options['ABCD'.indexOf(q.displayed_chosen_letter)]===q.chosen_answer,'chosen displayed letter maps to chosen answer');
+ }
  check(!app.innerHTML.includes('<script>alert(1)</script>'),'safely rendered');
  await click('home');check(state().phase==='finished','history preserved on home');
  await click('open',{id:pack.session_id});check(app.innerHTML.includes('Mes cinq repères d'amélioration'),'history resume after completion');
