@@ -79,7 +79,7 @@ async function run(){
   await click('next');
  }
  check(state().phase==='finished'&&state().cursor===11,'finished after 11');
- check(app.innerHTML.includes('Notes exercice par exercice'),'manual notes screen');
+ check(app.innerHTML.includes('Mes cinq repères d'amélioration'),'manual notes screen');
  for(let n=0;n<11;n++)change('grade-'+n,String(n%6),{type:'grade',dataset:{id:[...pack.quiz,...pack.cases,...pack.oral][n].id}});
  check(Object.values(state().grades).filter(n=>Number.isInteger(n)).length===11,'all 11 manual 0–5 grades saved');
  for(const axis of ['analyse','raisonnement','decision','expression','adaptation'])change('axis-grade-'+axis,'5',{type:'axis-grade',dataset:{axis}});
@@ -96,7 +96,7 @@ async function run(){
  check(exported.answers.filter(x=>x.type==='quiz').length===6,'qcm answers exported');
  check(!app.innerHTML.includes('<script>alert(1)</script>'),'safely rendered');
  await click('home');check(state().phase==='finished','history preserved on home');
- await click('open',{id:pack.session_id});check(app.innerHTML.includes('Notes exercice par exercice'),'history resume after completion');
+ await click('open',{id:pack.session_id});check(app.innerHTML.includes('Mes cinq repères d'amélioration'),'history resume after completion');
  console.log(`PASS ${tests} checks: import, validation, 6 timed QCM, 2 cases, 3 speech transcriptions, 11 manual grades, export, persistence.`);
 }
 run().catch(e=>{console.error(e);process.exitCode=1});
